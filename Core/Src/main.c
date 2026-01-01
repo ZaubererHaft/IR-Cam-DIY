@@ -58,20 +58,25 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
-static paramsMLX90640 mlx90640;
+static paramsMLX90640 mlxParams;
 static uint16_t frame[834];
 static uint16_t eeMLX90640[832];
-static float mlx90640To[768];
+static float image[768];
 static float emissivity = 0.95f;
 static int mlx_status;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+
 static void MX_GPIO_Init(void);
+
 static void MX_SPI1_Init(void);
+
 static void MX_TIM3_Init(void);
+
 static void MX_I2C2_Init(void);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -94,36 +99,49 @@ void LCD_Init(void) {
 
 void MLX90640_Init(void) {
   mlx_status |= MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
+  if (mlx_status != 0) {
+    Error_Handler();
+  }
   mlx_status |= MLX90640_SetChessMode(MLX90640_ADDR);
+  if (mlx_status != 0) {
+    Error_Handler();
+  }
   mlx_status |= MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
-  mlx_status |= MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
+  if (mlx_status != 0) {
+    Error_Handler();
+  }
+  mlx_status |= MLX90640_ExtractParameters(eeMLX90640, &mlxParams);
   if (mlx_status != 0) {
     Error_Handler();
   }
 }
 
 void MLX90640_ReadAll(void) {
-  mlx_status = MLX90640_GetFrameData(MLX90640_ADDR, frame);
-
-  float vdd = MLX90640_GetVdd(frame, &mlx90640);
-  float Ta = MLX90640_GetTa(frame, &mlx90640);
-
-  float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-  MLX90640_CalculateTo(frame, &mlx90640, emissivity, tr, mlx90640To);
+  for (int subpage = 0; subpage < 2; subpage++) {
+    mlx_status = MLX90640_GetFrameData(MLX90640_ADDR, frame);
+    if (mlx_status == 0) {
+      float Ta = MLX90640_GetTa(frame, &mlxParams);
+      float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
+      MLX90640_CalculateTo(frame, &mlxParams, emissivity, tr, image);
+    }
+  }
 }
 
 void LCD_DisplayAll() {
+  int offset = 32;
 
-  for (int i = 0; i < 768; i++) {
-    int x = i % 32;
-    int y = i / 32;
-    int offset = 32;
+  if (mlx_status == 0) {
+    for (int i = 0; i < 768; i++) {
+      int x = i % 32;
+      int y = i / 32;
 
-    float val = mlx90640To[i];
-    val = RED - val;
+      float val = image[i];
+      val = RED - val;
 
-    Paint_DrawPoint(x * 4 + offset, y * 4 + offset, val, DOT_PIXEL_4X4, DOT_FILL_AROUND);
-    Paint_DrawPoint(x * 4 + offset, y * 4 + offset, val, DOT_PIXEL_4X4, DOT_FILL_AROUND);
+      Paint_DrawPoint(x * 7 + offset, y * 7 + offset, val, DOT_PIXEL_4X4, DOT_FILL_AROUND);
+    }
+  } else {
+    Paint_DrawString_EN(offset, offset, "Fehler :/", &Font16, WHITE, RED);
   }
 }
 
@@ -133,9 +151,7 @@ void LCD_DisplayAll() {
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
-
+int main(void) {
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -185,8 +201,7 @@ int main(void)
   * @brief System Clock Configuration
   * @retval None
   */
-void SystemClock_Config(void)
-{
+void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
@@ -207,22 +222,20 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLN = 72;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
     Error_Handler();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
+                                | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-  {
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
     Error_Handler();
   }
 }
@@ -232,9 +245,7 @@ void SystemClock_Config(void)
   * @param None
   * @retval None
   */
-static void MX_I2C2_Init(void)
-{
-
+static void MX_I2C2_Init(void) {
   /* USER CODE BEGIN I2C2_Init 0 */
 
   /* USER CODE END I2C2_Init 0 */
@@ -243,7 +254,7 @@ static void MX_I2C2_Init(void)
 
   /* USER CODE END I2C2_Init 1 */
   hi2c2.Instance = I2C2;
-  hi2c2.Init.ClockSpeed = 100000;
+  hi2c2.Init.ClockSpeed = 400000;
   hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -251,14 +262,12 @@ static void MX_I2C2_Init(void)
   hi2c2.Init.OwnAddress2 = 0;
   hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
   hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
-  {
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
-
 }
 
 /**
@@ -266,9 +275,7 @@ static void MX_I2C2_Init(void)
   * @param None
   * @retval None
   */
-static void MX_SPI1_Init(void)
-{
-
+static void MX_SPI1_Init(void) {
   /* USER CODE BEGIN SPI1_Init 0 */
 
   /* USER CODE END SPI1_Init 0 */
@@ -289,14 +296,12 @@ static void MX_SPI1_Init(void)
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi1.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
+  if (HAL_SPI_Init(&hspi1) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN SPI1_Init 2 */
 
   /* USER CODE END SPI1_Init 2 */
-
 }
 
 /**
@@ -304,9 +309,7 @@ static void MX_SPI1_Init(void)
   * @param None
   * @retval None
   */
-static void MX_TIM3_Init(void)
-{
-
+static void MX_TIM3_Init(void) {
   /* USER CODE BEGIN TIM3_Init 0 */
 
   /* USER CODE END TIM3_Init 0 */
@@ -318,34 +321,30 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 300-1;
+  htim3.Init.Prescaler = 300 - 1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 1000-1;
+  htim3.Init.Period = 1000 - 1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
-  {
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK) {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
-  {
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK) {
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-  {
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN TIM3_Init 2 */
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
-
 }
 
 /**
@@ -353,8 +352,7 @@ static void MX_TIM3_Init(void)
   * @param None
   * @retval None
   */
-static void MX_GPIO_Init(void)
-{
+static void MX_GPIO_Init(void) {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
 
@@ -369,7 +367,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, RST_Pin|DC_Pin|CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, RST_Pin | DC_Pin | CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : USER_LED_Pin */
   GPIO_InitStruct.Pin = USER_LED_Pin;
@@ -379,7 +377,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(USER_LED_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : RST_Pin DC_Pin CS_Pin */
-  GPIO_InitStruct.Pin = RST_Pin|DC_Pin|CS_Pin;
+  GPIO_InitStruct.Pin = RST_Pin | DC_Pin | CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -398,8 +396,7 @@ static void MX_GPIO_Init(void)
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
-void Error_Handler(void)
-{
+void Error_Handler(void) {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
@@ -415,8 +412,7 @@ void Error_Handler(void)
   * @param  line: assert_param error line source number
   * @retval None
   */
-void assert_failed(uint8_t *file, uint32_t line)
-{
+void assert_failed(uint8_t *file, uint32_t line) {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */

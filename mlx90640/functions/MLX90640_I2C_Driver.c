@@ -21,41 +21,34 @@
 extern I2C_HandleTypeDef hi2c2;
 
 
-void MLX90640_I2CInit()
-{   
+void MLX90640_I2CInit() {
     //init already done in main.c
 }
 
 
-int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddressRead, uint16_t *data)
-{
+int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddressRead, uint16_t *data) {
+    uint8_t *bp = (uint8_t *) data;
 
-	uint8_t* bp = (uint8_t*) data;
-
-    int ack = 0;                               
+    int ack = 0;
     int cnt = 0;
-    
-    ack = HAL_I2C_Mem_Read(&hi2c2, (slaveAddr<<1), startAddress, I2C_MEMADD_SIZE_16BIT, bp, nMemAddressRead*2, 500);
 
-    if (ack != HAL_OK)
-    {
+    ack = HAL_I2C_Mem_Read(&hi2c2, (slaveAddr << 1), startAddress, I2C_MEMADD_SIZE_16BIT, bp, nMemAddressRead * 2, 500);
+
+    if (ack != HAL_OK) {
         return -1;
     }
-    
-    for(cnt=0; cnt < nMemAddressRead*2; cnt+=2) {
-    	uint8_t tmpbytelsb = bp[cnt+1];
-    	bp[cnt+1] = bp[cnt];
-    	bp[cnt] = tmpbytelsb;
+
+    for (cnt = 0; cnt < nMemAddressRead * 2; cnt += 2) {
+        uint8_t tmpbytelsb = bp[cnt + 1];
+        bp[cnt + 1] = bp[cnt];
+        bp[cnt] = tmpbytelsb;
     }
 
 
-    
-    return 0;   
-} 
+    return 0;
+}
 
-int MLX90640_I2CWrite(uint8_t slaveAddr, uint16_t writeAddress, uint16_t data)
-{
-
+int MLX90640_I2CWrite(uint8_t slaveAddr, uint16_t writeAddress, uint16_t data) {
     uint8_t sa;
     int ack = 0;
     uint8_t cmd[2];
@@ -68,18 +61,16 @@ int MLX90640_I2CWrite(uint8_t slaveAddr, uint16_t writeAddress, uint16_t data)
 
     ack = HAL_I2C_Mem_Write(&hi2c2, sa, writeAddress, I2C_MEMADD_SIZE_16BIT, cmd, sizeof(cmd), 500);
 
-    if (ack != HAL_OK)
-    {
+    if (ack != HAL_OK) {
         return -1;
-    }         
-    
-    MLX90640_I2CRead(slaveAddr,writeAddress,1, &dataCheck);
-    
-    if ( dataCheck != data)
-    {
+    }
+
+    MLX90640_I2CRead(slaveAddr, writeAddress, 1, &dataCheck);
+
+    if (dataCheck != data) {
         return -2;
-    }    
-    
+    }
+
     return 0;
 }
 
