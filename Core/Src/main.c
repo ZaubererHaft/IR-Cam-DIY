@@ -118,13 +118,49 @@ void MLX90640_Init(void) {
 
 void MLX90640_ReadAll(void) {
   for (int subpage = 0; subpage < 2; subpage++) {
-    mlx_status = MLX90640_GetFrameData(MLX90640_ADDR, frame);
-    if (mlx_status == 0) {
-      float Ta = MLX90640_GetTa(frame, &mlxParams);
-      float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-      MLX90640_CalculateTo(frame, &mlxParams, emissivity, tr, image);
-    }
+    MLX90640_GetFrameData(MLX90640_ADDR, frame);
+    float Ta = MLX90640_GetTa(frame, &mlxParams);
+    float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
+    MLX90640_CalculateTo(frame, &mlxParams, emissivity, tr, image);
   }
+}
+
+#define RGB565(r, g, b) \
+(((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F))
+
+uint16_t TempToRGB565(float temp)
+{
+  const float tMin = 15.0f;
+  const float tMax = 30.0f;
+
+  // Clamp
+  if (temp < tMin) temp = tMin;
+  if (temp > tMax) temp = tMax;
+
+  // Normalize (0.0 – 1.0)
+  float norm = (temp - tMin) / (tMax - tMin);
+
+  uint8_t r, g, b;
+
+  // Blue → Green → Red
+  if (norm < 0.5f)
+  {
+    // Blue → Green
+    float t = norm * 2.0f;
+    r = 0;
+    g = (uint8_t)(t * 63);
+    b = (uint8_t)((1.0f - t) * 31);
+  }
+  else
+  {
+    // Green → Red
+    float t = (norm - 0.5f) * 2.0f;
+    r = (uint8_t)(t * 31);
+    g = (uint8_t)((1.0f - t) * 63);
+    b = 0;
+  }
+
+  return RGB565(r, g, b);
 }
 
 void LCD_DisplayAll() {
@@ -136,9 +172,7 @@ void LCD_DisplayAll() {
       int y = i / 32;
 
       float val = image[i];
-      val = RED - val;
-
-      Paint_DrawPoint(x * 7 + offset, y * 7 + offset, val, DOT_PIXEL_4X4, DOT_FILL_AROUND);
+      Paint_DrawPoint(x * 7 + offset, y * 7 + offset, TempToRGB565(val), DOT_PIXEL_4X4, DOT_FILL_AROUND);
     }
   } else {
     Paint_DrawString_EN(offset, offset, "Fehler :/", &Font16, WHITE, RED);
