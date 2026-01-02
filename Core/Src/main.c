@@ -22,8 +22,11 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ILI9341_DMA_driver.h"
+#include "ILI9341_GFX.h"
 #include "MLX90640_API.h"
 #include "MLX90640_I2C_Driver.h"
+#include "FreeSerifBold24pt7b.h"
+#include "FreeMono12pt7b.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,6 +70,14 @@ static int mlx_status;
 
 volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
 
+static const float tMin = 15.0f;
+static const float tMax = 37.0f;
+static const int offset_x = 0;
+static const int offset_y = 24;
+static const int pixel_size = 8;
+static const int ir_width = 32;
+static const int ir_height = 24;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -88,47 +99,10 @@ static void MX_I2C2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void LCD_Init(void) {
-  ILI9341_Init();
-  ILI9341_Fill_Screen(0xAB00);
-  ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-}
-
-void MLX90640_Init(void) {
-  mlx_status |= MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
-  if (mlx_status != 0) {
-    Error_Handler();
-  }
-  mlx_status |= MLX90640_SetChessMode(MLX90640_ADDR);
-  if (mlx_status != 0) {
-    Error_Handler();
-  }
-  mlx_status |= MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
-  if (mlx_status != 0) {
-    Error_Handler();
-  }
-  mlx_status |= MLX90640_ExtractParameters(eeMLX90640, &mlxParams);
-  if (mlx_status != 0) {
-    Error_Handler();
-  }
-}
-
-void MLX90640_ReadAll(void) {
-  for (int subpage = 0; subpage < 2; subpage++) {
-    MLX90640_GetFrameData(MLX90640_ADDR, frame);
-    float Ta = MLX90640_GetTa(frame, &mlxParams);
-    float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-    MLX90640_CalculateTo(frame, &mlxParams, emissivity, tr, image);
-  }
-}
-
 #define RGB565(r, g, b) \
 (((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F))
 
 uint16_t TempToRGB565(float temp) {
-  const float tMin = 15.0f;
-  const float tMax = 37.0f;
-
   // Clamp
   if (temp < tMin) temp = tMin;
   if (temp > tMax) temp = tMax;
@@ -156,11 +130,58 @@ uint16_t TempToRGB565(float temp) {
   return RGB565(r, g, b);
 }
 
-void LCD_DisplayAll() {
-  int offset_x = 32;
-  int offset_y = 24;
-  int size = 8;
+void LCD_Init(void) {
+  ILI9341_Init();
+  ILI9341_Fill_Screen(0);
+  ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
+  ILI9341_set_adafruit_font(&FreeMono12pt7b);
 
+  ILI9341_Draw_Text(" D-CAM ", 0, 0, WHITE, 2, BLACK);
+
+  int x = (ir_width + 1) * pixel_size + offset_x;
+  int y = offset_y;
+
+  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempToRGB565(tMin));
+  ILI9341_Draw_Text("<=15 dC", x + pixel_size * 2, y, WHITE, 1, BLACK);
+
+  y += pixel_size;
+  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempToRGB565(tMax - tMin));
+  ILI9341_Draw_Text(" =22 dC", x + pixel_size * 2, y, WHITE, 1, BLACK);
+
+  y += pixel_size;
+  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempToRGB565(tMax));
+  ILI9341_Draw_Text(">=37 dC", x + pixel_size * 2, y, WHITE, 1, BLACK);
+
+}
+
+void MLX90640_Init(void) {
+  mlx_status |= MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
+  if (mlx_status != 0) {
+    Error_Handler();
+  }
+  mlx_status |= MLX90640_SetChessMode(MLX90640_ADDR);
+  if (mlx_status != 0) {
+    Error_Handler();
+  }
+  mlx_status |= MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
+  if (mlx_status != 0) {
+    Error_Handler();
+  }
+  mlx_status |= MLX90640_ExtractParameters(eeMLX90640, &mlxParams);
+  if (mlx_status != 0) {
+    Error_Handler();
+  }
+}
+
+void MLX90640_ReadAll(void) {
+    MLX90640_GetFrameData(MLX90640_ADDR, frame);
+    float Ta = MLX90640_GetTa(frame, &mlxParams);
+    float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
+    MLX90640_CalculateTo(frame, &mlxParams, emissivity, tr, image);
+}
+
+
+void LCD_DisplayAll() {
   if (mlx_status == 0) {
     for (int i = 0; i < 768; i++) {
       int x = i % 32;
@@ -168,7 +189,7 @@ void LCD_DisplayAll() {
 
       float val = image[i];
       uint16_t temp = TempToRGB565(val);
-      ILI9341_Draw_Rectangle(x * size + offset_x, y * size + offset_y, size, size, temp);
+      ILI9341_Draw_Rectangle(x * pixel_size + offset_x, y * pixel_size + offset_y, pixel_size, pixel_size, temp);
     }
   } else {
   }
