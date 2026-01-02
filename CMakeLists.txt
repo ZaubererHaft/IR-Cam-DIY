@@ -49,6 +49,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         mlx90640/functions/MLX90640_I2C_Driver.c
         LCD_2/ILI9341_GFX.c
         LCD_2/ILI9341_DMA_driver.c
+        Src/heatmap.c
 )
 
 # Add include paths
@@ -58,6 +59,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         LCD_2
         LCD_2/fonts
         LCD_2/bitmaps
+        Src
 )
 
 # Add project symbols (macros)

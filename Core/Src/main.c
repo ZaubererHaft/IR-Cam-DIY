@@ -27,6 +27,7 @@
 #include "MLX90640_I2C_Driver.h"
 #include "FreeSerifBold24pt7b.h"
 #include "FreeMono12pt7b.h"
+#include "heatmap.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -70,8 +71,6 @@ static int mlx_status;
 
 volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
 
-static const float tMin = 15.0f;
-static const float tMax = 37.0f;
 static const int offset_x = 0;
 static const int offset_y = 24;
 static const int pixel_size = 8;
@@ -99,36 +98,6 @@ static void MX_I2C2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#define RGB565(r, g, b) \
-(((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F))
-
-uint16_t TempToRGB565(float temp) {
-  // Clamp
-  if (temp < tMin) temp = tMin;
-  if (temp > tMax) temp = tMax;
-
-  // Normalize (0.0 – 1.0)
-  float norm = (temp - tMin) / (tMax - tMin);
-
-  uint8_t r, g, b;
-
-  // Blue → Green → Red
-  if (norm < 0.5f) {
-    // Blue → Green
-    float t = norm * 2.0f;
-    r = 0;
-    g = (uint8_t) (t * 63);
-    b = (uint8_t) ((1.0f - t) * 31);
-  } else {
-    // Green → Red
-    float t = (norm - 0.5f) * 2.0f;
-    r = (uint8_t) (t * 31);
-    g = (uint8_t) ((1.0f - t) * 63);
-    b = 0;
-  }
-
-  return RGB565(r, g, b);
-}
 
 void LCD_Init(void) {
   ILI9341_Init();
