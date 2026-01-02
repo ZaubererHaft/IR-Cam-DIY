@@ -21,8 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "GUI_Paint.h"
-#include "LCD_2inch4.h"
+#include "ILI9341_DMA_driver.h"
 #include "MLX90640_API.h"
 #include "MLX90640_I2C_Driver.h"
 /* USER CODE END Includes */
@@ -54,6 +53,7 @@
 I2C_HandleTypeDef hi2c2;
 
 SPI_HandleTypeDef hspi1;
+DMA_HandleTypeDef hdma_spi1_tx;
 
 TIM_HandleTypeDef htim3;
 
@@ -64,12 +64,17 @@ static uint16_t eeMLX90640[832];
 static float image[768];
 static float emissivity = 0.95f;
 static int mlx_status;
+
+volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 
 static void MX_GPIO_Init(void);
+
+static void MX_DMA_Init(void);
 
 static void MX_SPI1_Init(void);
 
@@ -84,17 +89,9 @@ static void MX_I2C2_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void LCD_Init(void) {
-  DEV_Module_Init();
-
-  LCD_2IN4_Init();
-  LCD_2IN4_Clear(WHITE);
-
-  Paint_NewImage(LCD_2IN4_WIDTH,LCD_2IN4_HEIGHT, ROTATE_270, WHITE);
-
-  Paint_SetClearFuntion(LCD_2IN4_Clear);
-  Paint_SetDisplayFuntion(LCD_2IN4_DrawPaint);
-
-  Paint_DrawString_EN(0, 0, " D-CAM ", &Font20, BLACK, WHITE);
+  ILI9341_Init();
+  ILI9341_Fill_Screen(0xAB00);
+  ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
 }
 
 void MLX90640_Init(void) {
@@ -128,10 +125,9 @@ void MLX90640_ReadAll(void) {
 #define RGB565(r, g, b) \
 (((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F))
 
-uint16_t TempToRGB565(float temp)
-{
+uint16_t TempToRGB565(float temp) {
   const float tMin = 15.0f;
-  const float tMax = 30.0f;
+  const float tMax = 37.0f;
 
   // Clamp
   if (temp < tMin) temp = tMin;
@@ -143,20 +139,17 @@ uint16_t TempToRGB565(float temp)
   uint8_t r, g, b;
 
   // Blue → Green → Red
-  if (norm < 0.5f)
-  {
+  if (norm < 0.5f) {
     // Blue → Green
     float t = norm * 2.0f;
     r = 0;
-    g = (uint8_t)(t * 63);
-    b = (uint8_t)((1.0f - t) * 31);
-  }
-  else
-  {
+    g = (uint8_t) (t * 63);
+    b = (uint8_t) ((1.0f - t) * 31);
+  } else {
     // Green → Red
     float t = (norm - 0.5f) * 2.0f;
-    r = (uint8_t)(t * 31);
-    g = (uint8_t)((1.0f - t) * 63);
+    r = (uint8_t) (t * 31);
+    g = (uint8_t) ((1.0f - t) * 63);
     b = 0;
   }
 
@@ -164,7 +157,9 @@ uint16_t TempToRGB565(float temp)
 }
 
 void LCD_DisplayAll() {
-  int offset = 32;
+  int offset_x = 32;
+  int offset_y = 24;
+  int size = 8;
 
   if (mlx_status == 0) {
     for (int i = 0; i < 768; i++) {
@@ -172,10 +167,10 @@ void LCD_DisplayAll() {
       int y = i / 32;
 
       float val = image[i];
-      Paint_DrawPoint(x * 7 + offset, y * 7 + offset, TempToRGB565(val), DOT_PIXEL_4X4, DOT_FILL_AROUND);
+      uint16_t temp = TempToRGB565(val);
+      ILI9341_Draw_Rectangle(x * size + offset_x, y * size + offset_y, size, size, temp);
     }
   } else {
-    Paint_DrawString_EN(offset, offset, "Fehler :/", &Font16, WHITE, RED);
   }
 }
 
@@ -208,6 +203,7 @@ int main(void) {
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_SPI1_Init();
   MX_TIM3_Init();
   MX_I2C2_Init();
@@ -221,9 +217,6 @@ int main(void) {
   while (1) {
     MLX90640_ReadAll();
     LCD_DisplayAll();
-    HAL_GPIO_TogglePin(USER_LED_GPIO_Port, USER_LED_Pin);
-    HAL_Delay(500);
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -382,6 +375,19 @@ static void MX_TIM3_Init(void) {
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void) {
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -423,6 +429,9 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
+  SPI2_TX_completed_flag = 1;
+}
 
 /* USER CODE END 4 */
 

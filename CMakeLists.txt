@@ -45,32 +45,19 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user sources here
-        LCD/Config/DEV_Config.c
-        LCD/example/LCD_2inch4_test.c
-        LCD/Fonts/font8.c
-        LCD/Fonts/font12.c
-        LCD/Fonts/font16.c
-        LCD/Fonts/font20.c
-        LCD/Fonts/font24.c
-        LCD/Fonts/font24.c
-        LCD/GUI_DEV/GUI_Paint.c
-        LCD/image/image.c
-        LCD/LCD/LCD_2inch4.c
         mlx90640/functions/MLX90640_API.c
         mlx90640/functions/MLX90640_I2C_Driver.c
-
+        LCD_2/ILI9341_GFX.c
+        LCD_2/ILI9341_DMA_driver.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined include paths
-        LCD/Config
-        LCD/Fonts
-        LCD/GUI_DEV
-        LCD/image
-        LCD/LCD
-        LCD/example
         mlx90640/headers
+        LCD_2
+        LCD_2/fonts
+        LCD_2/bitmaps
 )
 
 # Add project symbols (macros)
