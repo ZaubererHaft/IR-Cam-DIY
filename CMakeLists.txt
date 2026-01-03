@@ -52,6 +52,16 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Src/heatmap.c
 )
 
+if (CMAKE_BUILD_TYPE MATCHES Release)
+    #ToDo: find SPI issue from work
+    set_source_files_properties(
+            mlx90640/functions/MLX90640_API.c
+            Src/heatmap.c
+
+            PROPERTIES COMPILE_FLAGS "-O3"
+    )
+endif ()
+
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined include paths

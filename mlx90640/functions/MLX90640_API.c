@@ -18,6 +18,10 @@
 #include <MLX90640_API.h>
 #include <math.h>
 
+#include "ui_constants.h"
+#include "heatmap.h"
+#include "ILI9341_DMA_driver.h"
+
 static void ExtractVDDParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 static void ExtractPTATParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 static void ExtractGainParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
@@ -391,7 +395,7 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 
 //------------------------------------------------------------------------------
 
-void MLX90640_CalculateTo(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result)
+void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result)
 {
     float vdd;
     float ta;
@@ -516,8 +520,14 @@ void MLX90640_CalculateTo(uint16_t *frameData, const paramsMLX90640 *params, flo
             }      
             
             To = sqrt(sqrt(irData / (alphaCompensated * alphaCorrR[range] * (1 + params->ksTo[range] * (To - params->ct[range]))) + taTr)) - 273.15;
-                        
+
+
+            // immediate display
+            int x = pixelNumber % 32;
+            int y = pixelNumber / 32;
             result[pixelNumber] = To;
+            ILI9341_Draw_Rectangle(x * pixel_size + offset_x, y * pixel_size + offset_y, pixel_size, pixel_size, TempToRGB565(To));
+
         }
     }
 }

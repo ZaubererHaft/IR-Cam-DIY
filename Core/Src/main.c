@@ -25,8 +25,7 @@
 #include "ILI9341_GFX.h"
 #include "MLX90640_API.h"
 #include "MLX90640_I2C_Driver.h"
-#include "FreeSerifBold24pt7b.h"
-#include "FreeMono12pt7b.h"
+#include "ui_constants.h"
 #include "heatmap.h"
 /* USER CODE END Includes */
 
@@ -70,12 +69,8 @@ static float emissivity = 0.95f;
 static int mlx_status;
 
 volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
-
-static const int offset_x = 0;
-static const int offset_y = 24;
-static const int pixel_size = 8;
-static const int ir_width = 32;
-static const int ir_height = 24;
+volatile uint8_t record = 1;
+volatile uint8_t change_record = 1;
 
 /* USER CODE END PV */
 
@@ -103,7 +98,6 @@ void LCD_Init(void) {
   ILI9341_Init();
   ILI9341_Fill_Screen(0);
   ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-  ILI9341_set_adafruit_font(&FreeMono12pt7b);
 
   ILI9341_Draw_Text(" D-CAM ", 0, 0, WHITE, 2, BLACK);
 
@@ -120,6 +114,8 @@ void LCD_Init(void) {
   y += pixel_size;
   ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempToRGB565(tMax));
   ILI9341_Draw_Text(">=37 dC", x + pixel_size * 2, y, WHITE, 1, BLACK);
+
+  ILI9341_Draw_Rectangle(offset_x, offset_y, ir_width * pixel_size, ir_height * pixel_size,DARKGREY);
 
 }
 
@@ -142,27 +138,34 @@ void MLX90640_Init(void) {
   }
 }
 
-void MLX90640_ReadAll(void) {
-    MLX90640_GetFrameData(MLX90640_ADDR, frame);
-    float Ta = MLX90640_GetTa(frame, &mlxParams);
-    float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-    MLX90640_CalculateTo(frame, &mlxParams, emissivity, tr, image);
+void MLX90640_ReadAndDisplay(void) {
+  MLX90640_GetFrameData(MLX90640_ADDR, frame);
+  float Ta = MLX90640_GetTa(frame, &mlxParams);
+  float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
+  MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image);
 }
 
+void ChangeAndDisplayRecordState(void) {
+  record = !record;
 
-void LCD_DisplayAll() {
-  if (mlx_status == 0) {
-    for (int i = 0; i < 768; i++) {
-      int x = i % 32;
-      int y = i / 32;
+    ILI9341_Draw_Rectangle(lcd_width - pixel_size * 4, 0, pixel_size * 4, pixel_size * 2 + 4, BLACK);
 
-      float val = image[i];
-      uint16_t temp = TempToRGB565(val);
-      ILI9341_Draw_Rectangle(x * pixel_size + offset_x, y * pixel_size + offset_y, pixel_size, pixel_size, temp);
-    }
+  if (record) {
+    ILI9341_Draw_Filled_Circle(lcd_width - pixel_size * 2 + 4, pixel_size, pixel_size, RED);
+
   } else {
+    ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2, 0, 4, pixel_size * 2, LIGHTGREY);
+    ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2 + 6, 0, 4, pixel_size * 2, LIGHTGREY);
+  }
+
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+  if (GPIO_Pin == USER_BUTTON_Pin) {
+    change_record = 1;
   }
 }
+
 
 /* USER CODE END 0 */
 
@@ -205,8 +208,15 @@ int main(void) {
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1) {
-    MLX90640_ReadAll();
-    LCD_DisplayAll();
+    if (change_record) {
+      ChangeAndDisplayRecordState();
+      change_record = 0;
+    }
+
+    if (record) {
+      MLX90640_ReadAndDisplay();
+    }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -406,12 +416,22 @@ static void MX_GPIO_Init(void) {
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(USER_LED_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : USER_BUTTON_Pin */
+  GPIO_InitStruct.Pin = USER_BUTTON_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(USER_BUTTON_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : RST_Pin DC_Pin CS_Pin */
   GPIO_InitStruct.Pin = RST_Pin | DC_Pin | CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
