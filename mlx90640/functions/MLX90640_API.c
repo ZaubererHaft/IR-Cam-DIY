@@ -123,7 +123,7 @@ int MLX90640_GetFrameData(uint8_t slaveAddr, uint16_t *frameData)
     int error = 1;
     uint16_t data[64];
     uint8_t cnt = 0;
-    
+
     while(dataReady == 0)
     {
         error = MLX90640_I2CRead(slaveAddr, MLX90640_STATUS_REG, 1, &statusRegister);
@@ -162,7 +162,7 @@ int MLX90640_GetFrameData(uint8_t slaveAddr, uint16_t *frameData)
     {
         return error;
     }
-    
+
     error = ValidateAuxData(data);
     if(error == MLX90640_NO_ERROR)
     {
@@ -421,7 +421,7 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
     float alphaScale;
     float kta;
     float kv;
-    
+
     subPage = frameData[833];
     vdd = MLX90640_GetVdd(frameData, params);
     ta = MLX90640_GetTa(frameData, params);
@@ -523,10 +523,12 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
 
 
             // immediate display
-            int x = pixelNumber % 32;
-            int y = pixelNumber / 32;
-            result[pixelNumber] = To;
-            ILI9341_Draw_Rectangle(x * pixel_size + offset_x, y * pixel_size + offset_y, pixel_size, pixel_size, TempToRGB565(To));
+            if (fabs(To - result[pixelNumber]) > 0.5f) {
+                int x = pixelNumber % 32;
+                int y = pixelNumber / 32;
+                ILI9341_Draw_Rectangle(x * pixel_size + offset_x, y * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(To));
+                result[pixelNumber] = To;
+            }
 
         }
     }

@@ -69,8 +69,10 @@ static float emissivity = 0.95f;
 static int mlx_status;
 
 volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
-volatile uint8_t record = 1;
+volatile uint8_t record = 0;
 volatile uint8_t change_record = 1;
+
+uint16_t (*TempConverter)(float) = &TempToGray565_InvertedFast;
 
 /* USER CODE END PV */
 
@@ -104,15 +106,15 @@ void LCD_Init(void) {
   int x = (ir_width + 1) * pixel_size + offset_x;
   int y = offset_y;
 
-  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempToRGB565(tMin));
+  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMin));
   ILI9341_Draw_Text("<=15 dC", x + pixel_size * 2, y, WHITE, 1, BLACK);
 
   y += pixel_size;
-  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempToRGB565(tMax - tMin));
+  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMax - tMin));
   ILI9341_Draw_Text(" =22 dC", x + pixel_size * 2, y, WHITE, 1, BLACK);
 
   y += pixel_size;
-  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempToRGB565(tMax));
+  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMax));
   ILI9341_Draw_Text(">=37 dC", x + pixel_size * 2, y, WHITE, 1, BLACK);
 
   ILI9341_Draw_Rectangle(offset_x, offset_y, ir_width * pixel_size, ir_height * pixel_size,DARKGREY);
@@ -139,10 +141,18 @@ void MLX90640_Init(void) {
 }
 
 void MLX90640_ReadAndDisplay(void) {
+  uint32_t tickstart = HAL_GetTick();
   MLX90640_GetFrameData(MLX90640_ADDR, frame);
+  uint32_t tickend= HAL_GetTick();
+
   float Ta = MLX90640_GetTa(frame, &mlxParams);
   float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
+
+  uint32_t tickstart2 = HAL_GetTick();
   MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image);
+  uint32_t tickend2 = HAL_GetTick();
+
+  int i = 0;
 }
 
 void ChangeAndDisplayRecordState(void) {
