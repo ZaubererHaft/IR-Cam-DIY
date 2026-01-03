@@ -76,7 +76,7 @@ volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI tra
 volatile uint8_t record = 0;
 volatile uint8_t change_record = 1;
 
-uint16_t (*TempConverter)(float) = &TempToGray565_Inverted;
+uint16_t (*TempConverter)(float) = &TempToMagma565_Fast;
 
 float tMin = 20.0f;
 float tMax = 25.0f;
@@ -161,35 +161,33 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 }
 
 void DrawHeatmpIfNecessary(void) {
-  if (fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
-    tMinOld = tMin;
-    tMaxOld = tMax;
+  tMinOld = tMin;
+  tMaxOld = tMax;
 
-    int x = (ir_width + 1) * pixel_size + offset_x;
-    int y = offset_y;
+  int x = (ir_width + 1) * pixel_size + offset_x;
+  int y = offset_y;
 
-    ILI9341_Draw_Text("Heatmap", x, y, WHITE, 1, BLACK);
+  ILI9341_Draw_Text("Heatmap", x, y, WHITE, 1, BLACK);
 
-    y += pixel_size * 2;
+  y += pixel_size * 2;
 
-    char buff[10] = {};
-    itoa(tMin, buff, 10);
-    ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMin));
-    ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
+  char buff[10] = {};
+  itoa(tMin, buff, 10);
+  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMin));
+  ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
 
-    memset(buff, 0, sizeof(buff));
-    float mid = (tMax + fabs(tMin)) / 2;
-    itoa(mid, buff, 10);
-    y += pixel_size;
-    ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(mid));
-    ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
+  memset(buff, 0, sizeof(buff));
+  float mid = (tMax + fabs(tMin)) / 2;
+  itoa(mid, buff, 10);
+  y += pixel_size;
+  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(mid));
+  ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
 
-    memset(buff, 0, sizeof(buff));
-    itoa(tMax, buff, 10);
-    y += pixel_size;
-    ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMax));
-    ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
-  }
+  memset(buff, 0, sizeof(buff));
+  itoa(tMax, buff, 10);
+  y += pixel_size;
+  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMax));
+  ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
 }
 
 /* USER CODE END 0 */
@@ -234,19 +232,30 @@ int main(void) {
   /* USER CODE BEGIN WHILE */
   tMinOld = tMin;
   tMaxOld = tMax;
+  int did_nothing;
 
   while (1) {
+    did_nothing = 1;
+
     if (change_record) {
       ChangeAndDisplayRecordState();
       change_record = 0;
+      did_nothing = 0;
     }
 
     if (record) {
       MLX90640_ReadAndDisplay();
+      did_nothing = 0;
     }
 
-    DrawHeatmpIfNecessary();
+    if (fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
+      DrawHeatmpIfNecessary();
+      did_nothing = 0;
+    }
 
+    if (did_nothing) {
+      __WFI();
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
