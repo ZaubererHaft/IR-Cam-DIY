@@ -13,7 +13,7 @@ uint16_t TempToMagma565_Fast(float temp);
 
 extern uint16_t (*TempConverter)(float);
 
-#define tMin 15.0f
-#define tMax 37.0f
+extern float tMin;
+extern float tMax;
 
 #endif //CAM_HEATMAP_H

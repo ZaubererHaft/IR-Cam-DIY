@@ -21,6 +21,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "ILI9341_DMA_driver.h"
 #include "ILI9341_GFX.h"
 #include "MLX90640_API.h"
@@ -72,7 +76,12 @@ volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI tra
 volatile uint8_t record = 0;
 volatile uint8_t change_record = 1;
 
-uint16_t (*TempConverter)(float) = &TempToGray565_InvertedFast;
+uint16_t (*TempConverter)(float) = &TempToGray565_Inverted;
+
+float tMin = 20.0f;
+float tMax = 25.0f;
+float tMinOld;
+float tMaxOld;
 
 /* USER CODE END PV */
 
@@ -98,27 +107,12 @@ static void MX_I2C2_Init(void);
 
 void LCD_Init(void) {
   ILI9341_Init();
-  ILI9341_Fill_Screen(0);
+  ILI9341_Fill_Screen(BLACK);
   ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
 
   ILI9341_Draw_Text(" D-CAM ", 0, 0, WHITE, 2, BLACK);
 
-  int x = (ir_width + 1) * pixel_size + offset_x;
-  int y = offset_y;
-
-  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMin));
-  ILI9341_Draw_Text("<=15 dC", x + pixel_size * 2, y, WHITE, 1, BLACK);
-
-  y += pixel_size;
-  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMax - tMin));
-  ILI9341_Draw_Text(" =22 dC", x + pixel_size * 2, y, WHITE, 1, BLACK);
-
-  y += pixel_size;
-  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMax));
-  ILI9341_Draw_Text(">=37 dC", x + pixel_size * 2, y, WHITE, 1, BLACK);
-
   ILI9341_Draw_Rectangle(offset_x, offset_y, ir_width * pixel_size, ir_height * pixel_size,DARKGREY);
-
 }
 
 void MLX90640_Init(void) {
@@ -141,33 +135,23 @@ void MLX90640_Init(void) {
 }
 
 void MLX90640_ReadAndDisplay(void) {
-  uint32_t tickstart = HAL_GetTick();
   MLX90640_GetFrameData(MLX90640_ADDR, frame);
-  uint32_t tickend= HAL_GetTick();
-
   float Ta = MLX90640_GetTa(frame, &mlxParams);
   float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-
-  uint32_t tickstart2 = HAL_GetTick();
   MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image);
-  uint32_t tickend2 = HAL_GetTick();
-
-  int i = 0;
 }
 
 void ChangeAndDisplayRecordState(void) {
   record = !record;
 
-    ILI9341_Draw_Rectangle(lcd_width - pixel_size * 4, 0, pixel_size * 4, pixel_size * 2 + 4, BLACK);
+  ILI9341_Draw_Rectangle(lcd_width - pixel_size * 4, 0, pixel_size * 4, pixel_size * 2 + 4, BLACK);
 
   if (record) {
     ILI9341_Draw_Filled_Circle(lcd_width - pixel_size * 2 + 4, pixel_size, pixel_size, RED);
-
   } else {
     ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2, 0, 4, pixel_size * 2, LIGHTGREY);
     ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2 + 6, 0, 4, pixel_size * 2, LIGHTGREY);
   }
-
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
@@ -176,6 +160,37 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   }
 }
 
+void DrawHeatmpIfNecessary(void) {
+  if (fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
+    tMinOld = tMin;
+    tMaxOld = tMax;
+
+    int x = (ir_width + 1) * pixel_size + offset_x;
+    int y = offset_y;
+
+    ILI9341_Draw_Text("Heatmap", x, y, WHITE, 1, BLACK);
+
+    y += pixel_size * 2;
+
+    char buff[10] = {};
+    itoa(tMin, buff, 10);
+    ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMin));
+    ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
+
+    memset(buff, 0, sizeof(buff));
+    float mid = (tMax + fabs(tMin)) / 2;
+    itoa(mid, buff, 10);
+    y += pixel_size;
+    ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(mid));
+    ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
+
+    memset(buff, 0, sizeof(buff));
+    itoa(tMax, buff, 10);
+    y += pixel_size;
+    ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMax));
+    ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
+  }
+}
 
 /* USER CODE END 0 */
 
@@ -217,6 +232,9 @@ int main(void) {
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  tMinOld = tMin;
+  tMaxOld = tMax;
+
   while (1) {
     if (change_record) {
       ChangeAndDisplayRecordState();
@@ -226,6 +244,8 @@ int main(void) {
     if (record) {
       MLX90640_ReadAndDisplay();
     }
+
+    DrawHeatmpIfNecessary();
 
     /* USER CODE END WHILE */
 

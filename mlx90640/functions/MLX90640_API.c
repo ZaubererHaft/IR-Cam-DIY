@@ -14,6 +14,7 @@
  * limitations under the License.
  *
  */
+#include <float.h>
 #include <MLX90640_I2C_Driver.h>
 #include <MLX90640_API.h>
 #include <math.h>
@@ -463,6 +464,9 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
       irDataCP[1] = irDataCP[1] - (params->cpOffset[1] + params->ilChessC[0]) * (1 + params->cpKta * (ta - 25)) * (1 + params->cpKv * (vdd - 3.3));
     }
 
+    float min = FLT_MAX;
+    float max = FLT_MIN;
+
     for( int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
     {
         ilPattern = pixelNumber / 32 - (pixelNumber / 64) * 2; 
@@ -524,6 +528,12 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
 
             // immediate display
             if (fabs(To - result[pixelNumber]) > 0.5f) {
+                if (To < min) {
+                    min = To;
+                }
+                else if (To > max) {
+                    max = To;
+                }
                 int x = pixelNumber % 32;
                 int y = pixelNumber / 32;
                 ILI9341_Draw_Rectangle(x * pixel_size + offset_x, y * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(To));
@@ -531,6 +541,13 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
             }
 
         }
+    }
+
+    if (min < tMin) {
+        tMin = (int) (min - 0.5f);
+    }
+    if (max > tMax) {
+        tMax = (int) (max + 0.5f);
     }
 }
 
