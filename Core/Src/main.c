@@ -69,12 +69,14 @@ static paramsMLX90640 mlxParams;
 static uint16_t frame[834];
 static uint16_t eeMLX90640[832];
 static float image[768];
+static float image_upscaled[768];
 static float emissivity = 0.95f;
 static int mlx_status;
 
 volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
 volatile uint8_t record = 0;
 volatile uint8_t change_record = 1;
+volatile uint8_t upscale = 0;
 
 uint16_t (*TempConverter)(float) = &TempToMagma565_Fast;
 
@@ -138,7 +140,78 @@ void MLX90640_ReadAndDisplay(void) {
   MLX90640_GetFrameData(MLX90640_ADDR, frame);
   float Ta = MLX90640_GetTa(frame, &mlxParams);
   float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-  MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image);
+
+  if (upscale) {
+    MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 0);
+
+    // Copy real data to checkerboard-like structure
+    for (int x = 0; x < 32; ++x) {
+      for (int y = 0; y < 24; ++y) {
+        image_upscaled[(y * 2) * 64 + x * 2] = image[y * 32 + x];
+      }
+    }
+
+    for (int y = 0; y < 48; ++y) {
+      for (int x = 0; x < 64; ++x) {
+        // row even -> partially filled -> interpolate only between two neighbors
+        if (y % 2 == 0) {
+          //skips every second integer (which has a "real" pixel value)
+          if (x % 2 != 0) {
+            float left;
+            float right;
+
+            if (x == 63) {
+              left = image_upscaled[y * 64 + x - 1];
+              right = left;
+            } else {
+              left = image_upscaled[y * 64 + x - 1];
+              right = image_upscaled[y * 64 + x + 1];
+            }
+            image_upscaled[y * 64 + x] = (left + right) / 2.0f;
+          }
+        }
+        //row odd -> empty -> interpolate between the 4 surrounding cells
+        else {
+          // boundary cells left -> only use top and bottom
+          if (x == 0) {
+            float top = image_upscaled[(y - 1) * 64 + x];
+            float bottom = top;
+            // remark: the case y == 0 is handled in the very first if and not relevant, here
+            if (y < 47) {
+              bottom = image_upscaled[(y + 1) * 64 + x];
+            }
+            image_upscaled[y * 64 + x] = (top + bottom) / 2.0f;
+          }
+          // boundary cells right -> there is only an (already interpolated) top value due to the even structure of the checkerboard.
+          // instead, use its left neighbor
+          else if (x == 63) {
+            float top = image_upscaled[(y - 1) * 64 + x];
+            float bottom = top;
+            if (y < 47) {
+              bottom = image_upscaled[(y + 1) * 64 + x - 1];
+            }
+            image_upscaled[y * 64 + x] = (top + bottom) / 2.0f;
+          } else {
+            float left_top = image_upscaled[(y - 1) * 64 + x - 1];
+            float right_top = image_upscaled[(y - 1) * 64 + x + 1];
+            float left_bottom = left_top;
+            float right_bottom = right_top;
+            if (y < 47) {
+              left_bottom = image_upscaled[(y + 1) * 64 + x - 1];
+              right_bottom = image_upscaled[(y + 1) * 64 + x + 1];
+            }
+            image_upscaled[y * 64 + x] = (left_top + right_top + left_bottom + right_bottom) / 4.0f;
+          }
+        }
+
+        ILI9341_Draw_Rectangle(x * pixel_size / 2 + offset_x, y * pixel_size / 2 + offset_y, pixel_size / 2,
+                               pixel_size / 2,
+                               TempConverter(image_upscaled[y * 64 + x]));
+      }
+    }
+  } else {
+    MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 1);
+  }
 }
 
 void ChangeAndDisplayRecordState(void) {
@@ -157,6 +230,7 @@ void ChangeAndDisplayRecordState(void) {
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if (GPIO_Pin == USER_BUTTON_Pin) {
     change_record = 1;
+    upscale = 1;
   }
 }
 
