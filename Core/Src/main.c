@@ -47,7 +47,7 @@
 #define  FPS32HZ  0x06
 
 #define  MLX90640_ADDR 0x33
-#define	 RefreshRate FPS16HZ
+#define	 RefreshRate FPS8HZ
 #define  TA_SHIFT 8 //Default shift for MLX90640 in open air
 /* USER CODE END PD */
 
@@ -267,10 +267,12 @@ void UpscaleTimesTwo(const float *original_image, float *upscaled_image, const i
 }
 
 void MLX90640_ReadUpscaleAndDisplay() {
-  MLX90640_GetFrameData(MLX90640_ADDR, frame);
-  float Ta = MLX90640_GetTa(frame, &mlxParams);
-  float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-  MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 0);
+  for (int i = 0; i < 2; ++i) {
+    MLX90640_GetFrameData(MLX90640_ADDR, frame);
+    float Ta = MLX90640_GetTa(frame, &mlxParams);
+    float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
+    MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 0);
+  }
   UpscaleTimesTwo(image, image_upscaled_1, ir_width, ir_height);
   for (int y = 0; y < ir_height * 2; ++y) {
     for (int x = 0; x < ir_width * 2; ++x) {
