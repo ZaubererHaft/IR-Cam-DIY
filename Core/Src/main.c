@@ -68,8 +68,9 @@ TIM_HandleTypeDef htim3;
 static paramsMLX90640 mlxParams;
 static uint16_t frame[834];
 static uint16_t eeMLX90640[832];
-static float image[768];
-static float image_upscaled[768];
+static float image[32 * 24];
+static float image_upscaled_1[64 * 48];
+
 static float emissivity = 0.95f;
 static int mlx_status;
 
@@ -136,84 +137,6 @@ void MLX90640_Init(void) {
   }
 }
 
-void MLX90640_ReadAndDisplay(void) {
-  MLX90640_GetFrameData(MLX90640_ADDR, frame);
-  float Ta = MLX90640_GetTa(frame, &mlxParams);
-  float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-
-  if (upscale) {
-    MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 0);
-
-    // Copy real data to checkerboard-like structure
-    for (int x = 0; x < 32; ++x) {
-      for (int y = 0; y < 24; ++y) {
-        image_upscaled[(y * 2) * 64 + x * 2] = image[y * 32 + x];
-      }
-    }
-
-    for (int y = 0; y < 48; ++y) {
-      for (int x = 0; x < 64; ++x) {
-        // row even -> partially filled -> interpolate only between two neighbors
-        if (y % 2 == 0) {
-          //skips every second integer (which has a "real" pixel value)
-          if (x % 2 != 0) {
-            float left;
-            float right;
-
-            if (x == 63) {
-              left = image_upscaled[y * 64 + x - 1];
-              right = left;
-            } else {
-              left = image_upscaled[y * 64 + x - 1];
-              right = image_upscaled[y * 64 + x + 1];
-            }
-            image_upscaled[y * 64 + x] = (left + right) / 2.0f;
-          }
-        }
-        //row odd -> empty -> interpolate between the 4 surrounding cells
-        else {
-          // boundary cells left -> only use top and bottom
-          if (x == 0) {
-            float top = image_upscaled[(y - 1) * 64 + x];
-            float bottom = top;
-            // remark: the case y == 0 is handled in the very first if and not relevant, here
-            if (y < 47) {
-              bottom = image_upscaled[(y + 1) * 64 + x];
-            }
-            image_upscaled[y * 64 + x] = (top + bottom) / 2.0f;
-          }
-          // boundary cells right -> there is only an (already interpolated) top value due to the even structure of the checkerboard.
-          // instead, use its left neighbor
-          else if (x == 63) {
-            float top = image_upscaled[(y - 1) * 64 + x];
-            float bottom = top;
-            if (y < 47) {
-              bottom = image_upscaled[(y + 1) * 64 + x - 1];
-            }
-            image_upscaled[y * 64 + x] = (top + bottom) / 2.0f;
-          } else {
-            float left_top = image_upscaled[(y - 1) * 64 + x - 1];
-            float right_top = image_upscaled[(y - 1) * 64 + x + 1];
-            float left_bottom = left_top;
-            float right_bottom = right_top;
-            if (y < 47) {
-              left_bottom = image_upscaled[(y + 1) * 64 + x - 1];
-              right_bottom = image_upscaled[(y + 1) * 64 + x + 1];
-            }
-            image_upscaled[y * 64 + x] = (left_top + right_top + left_bottom + right_bottom) / 4.0f;
-          }
-        }
-
-        ILI9341_Draw_Rectangle(x * pixel_size / 2 + offset_x, y * pixel_size / 2 + offset_y, pixel_size / 2,
-                               pixel_size / 2,
-                               TempConverter(image_upscaled[y * 64 + x]));
-      }
-    }
-  } else {
-    MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 1);
-  }
-}
-
 void ChangeAndDisplayRecordState(void) {
   record = !record;
 
@@ -262,6 +185,97 @@ void DrawHeatmpIfNecessary(void) {
   y += pixel_size;
   ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMax));
   ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
+}
+
+void UpscaleTimesTwo(const float *original_image, float *upscaled_image, const int width_before,
+                     const int height_before) {
+  int width_new = width_before * 2;
+  int height_new = height_before * 2;
+
+  // Copy real data to checkerboard-like structure
+  for (int x = 0; x < width_before; ++x) {
+    for (int y = 0; y < height_before; ++y) {
+      upscaled_image[(y * 2) * width_new + x * 2] = original_image[y * width_before + x];
+    }
+  }
+
+  for (int y = 0; y < height_new; ++y) {
+    for (int x = 0; x < width_new; ++x) {
+      // row even -> partially filled -> interpolate only between two neighbors
+      if (y % 2 == 0) {
+        //skips every second integer (which has a "real" pixel value)
+        if (x % 2 != 0) {
+          float left;
+          float right;
+
+          if (x == 63) {
+            left = upscaled_image[y * width_new + x - 1];
+            right = left;
+          } else {
+            left = upscaled_image[y * width_new + x - 1];
+            right = upscaled_image[y * width_new + x + 1];
+          }
+          upscaled_image[y * width_new + x] = (left + right) / 2.0f;
+        }
+      }
+      //row odd -> empty -> interpolate between the 4 surrounding cells
+      else {
+        // boundary cells left -> only use top and bottom
+        if (x == 0) {
+          float top = upscaled_image[(y - 1) * width_new + x];
+          float bottom = top;
+          // remark: the case y == 0 is handled in the very first if and not relevant, here
+          if (y < height_new - 1) {
+            bottom = upscaled_image[(y + 1) * width_new + x];
+          }
+          upscaled_image[y * width_new + x] = (top + bottom) / 2.0f;
+        }
+        // boundary cells right -> there is only an (already interpolated) top value due to the even structure of the checkerboard.
+        // instead, use its left neighbor
+        else if (x == width_new - 1) {
+          float top = upscaled_image[(y - 1) * width_new + x];
+          float bottom = top;
+          if (y < height_new - 1) {
+            bottom = upscaled_image[(y + 1) * width_new + x - 1];
+          }
+          upscaled_image[y * width_new + x] = (top + bottom) / 2.0f;
+        } else {
+          float left_top = upscaled_image[(y - 1) * width_new + x - 1];
+          float right_top = upscaled_image[(y - 1) * width_new + x + 1];
+          float left_bottom = left_top;
+          float right_bottom = right_top;
+          if (y < height_new - 1) {
+            left_bottom = upscaled_image[(y + 1) * width_new + x - 1];
+            right_bottom = upscaled_image[(y + 1) * width_new + x + 1];
+          }
+          upscaled_image[y * width_new + x] = (left_top + right_top + left_bottom + right_bottom) / 4.0f;
+        }
+      }
+    }
+  }
+}
+
+void MLX90640_ReadUpscaleAndDisplay() {
+  MLX90640_GetFrameData(MLX90640_ADDR, frame);
+  float Ta = MLX90640_GetTa(frame, &mlxParams);
+  float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
+  MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 0);
+  UpscaleTimesTwo(image, image_upscaled_1, ir_width, ir_height);
+  for (int y = 0; y < ir_height * 2; ++y) {
+    for (int x = 0; x < ir_width * 2; ++x) {
+      ILI9341_Draw_Rectangle(x * pixel_size / 2 + offset_x, y * pixel_size / 2 + offset_y, pixel_size / 2,
+                             pixel_size / 2,
+                             TempConverter(image_upscaled_1[y * ir_width * 2 + x]));
+    }
+  }
+}
+
+
+void MLX90640_ReadAndDisplay(void) {
+  MLX90640_GetFrameData(MLX90640_ADDR, frame);
+  float Ta = MLX90640_GetTa(frame, &mlxParams);
+  float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
+  MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 1);
 }
 
 /* USER CODE END 0 */
@@ -318,7 +332,11 @@ int main(void) {
     }
 
     if (record) {
-      MLX90640_ReadAndDisplay();
+      if (upscale) {
+        MLX90640_ReadUpscaleAndDisplay();
+      } else {
+        MLX90640_ReadAndDisplay();
+      }
       did_nothing = 0;
     }
 
