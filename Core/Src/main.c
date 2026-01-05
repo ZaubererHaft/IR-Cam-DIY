@@ -192,7 +192,11 @@ void UpscaleTimesTwo(const float *original_image, float *upscaled_image, const i
   int width_new = width_before * 2;
   int height_new = height_before * 2;
 
-  // Copy real data to checkerboard-like structure
+  // Copy real data to checkerboard-like structure like this
+  // x - x - x .... -     0
+  // - - - - - .... -     1
+  // x - x - x .... -     2
+  // - - - - - .... -     3
   for (int x = 0; x < width_before; ++x) {
     for (int y = 0; y < height_before; ++y) {
       upscaled_image[(y * 2) * width_new + x * 2] = original_image[y * width_before + x];
@@ -202,13 +206,14 @@ void UpscaleTimesTwo(const float *original_image, float *upscaled_image, const i
   for (int y = 0; y < height_new; ++y) {
     for (int x = 0; x < width_new; ++x) {
       // row even -> partially filled -> interpolate only between two neighbors
+
       if (y % 2 == 0) {
         //skips every second integer (which has a "real" pixel value)
         if (x % 2 != 0) {
           float left;
           float right;
 
-          if (x == 63) {
+          if (x == width_new - 1) {
             left = upscaled_image[y * width_new + x - 1];
             right = left;
           } else {
@@ -221,6 +226,9 @@ void UpscaleTimesTwo(const float *original_image, float *upscaled_image, const i
       //row odd -> empty -> interpolate between the 4 surrounding cells
       else {
         // boundary cells left -> only use top and bottom
+        // x x ... (interpolated before)
+        // - - ... (value searched)
+        // x - ...
         if (x == 0) {
           float top = upscaled_image[(y - 1) * width_new + x];
           float bottom = top;
@@ -232,6 +240,9 @@ void UpscaleTimesTwo(const float *original_image, float *upscaled_image, const i
         }
         // boundary cells right -> there is only an (already interpolated) top value due to the even structure of the checkerboard.
         // instead, use its left neighbor
+        // ... x x (interpolated before)
+        // ... x - (value searched)
+        // ... x - (next row has checkerboard pattern)
         else if (x == width_new - 1) {
           float top = upscaled_image[(y - 1) * width_new + x];
           float bottom = top;
