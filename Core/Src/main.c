@@ -69,6 +69,7 @@ static paramsMLX90640 mlxParams;
 static uint16_t frame[834];
 static uint16_t eeMLX90640[832];
 static float image[32 * 24];
+static uint16_t pixels[32 * 24];
 static float image_upscaled_1[64 * 48];
 
 static float emissivity = 0.95f;
@@ -157,7 +158,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   }
 }
 
-void DrawHeatmpIfNecessary(void) {
+void DrawHeatmp(void) {
   tMinOld = tMin;
   tMaxOld = tMax;
 
@@ -266,12 +267,80 @@ void UpscaleTimesTwo(const float *original_image, float *upscaled_image, const i
   }
 }
 
+void UpscaleTimesTwoAndDisplayImmediately(const float *original_image, const int width_before,
+                                          const int height_before) {
+  int width_new = width_before * 2;
+  int height_new = height_before * 2;
+
+  for (int y = 0; y < height_new; ++y) {
+    for (int x = 0; x < width_new; ++x) {
+      float temp;
+      int y_old = y / 2;
+      int x_old = x / 2;
+
+      // row even -> partially filled -> interpolate only between two neighbors
+      if (y % 2 == 0) {
+        //skips every second integer (which has a "real" pixel value)
+        if (x % 2 != 0) {
+          float left;
+          float right;
+
+          if (x == width_new - 1) {
+            left = original_image[y_old * width_before + x_old];
+            right = left;
+          } else {
+            left = original_image[y_old * width_before + x_old];
+            right = original_image[y_old * width_before + x_old + 1];
+          }
+          temp = (left + right) / 2.0f;
+        } else {
+          temp = original_image[y_old * width_before + x_old];
+        }
+      }
+      //row odd -> empty -> interpolate between the 4 surrounding cells
+      else {
+        if (x == 0) {
+          float top = original_image[y_old * width_before + x_old];
+          float bottom = top;
+          // remark: the case y == 0 is handled in the very first if and not relevant, here
+          if (y < height_new - 1) {
+            bottom = original_image[(y_old + 1) * width_before + x_old];
+          }
+          temp = (top + bottom) / 2.0f;
+        }
+        else if (x == width_new - 1) {
+          float top = original_image[y_old * width_before + x_old];
+          float bottom = top;
+          if (y < height_new - 1) {
+            bottom = original_image[(y_old + 1) * width_before + x_old];
+          }
+          temp = (top + bottom) / 2.0f;
+        } else {
+          float left_top = original_image[y_old * width_before + x_old];
+          float right_top = original_image[y_old * width_before + x_old + 1];
+          float left_bottom = left_top;
+          float right_bottom = right_top;
+          if (y < height_new - 1) {
+            left_bottom = original_image[(y_old + 1) * width_before + x_old];
+            right_bottom = original_image[(y_old + 1) * width_before + x_old + 1];
+          }
+          temp = (left_top + right_top + left_bottom + right_bottom) / 4.0f;
+        }
+      }
+
+      ILI9341_Draw_Rectangle(x * pixel_size / 2 + offset_x, y * pixel_size / 2 + offset_y, pixel_size / 2,
+                             pixel_size / 2,
+                             TempConverter(temp));
+    }
+  }
+}
+
 void MLX90640_ReadUpscaleAndDisplay() {
   for (int i = 0; i < 2; ++i) {
     MLX90640_GetFrameData(MLX90640_ADDR, frame);
     float Ta = MLX90640_GetTa(frame, &mlxParams);
     float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-    MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 0);
+    MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 0, 1);
   }
   UpscaleTimesTwo(image, image_upscaled_1, ir_width, ir_height);
   for (int y = 0; y < ir_height * 2; ++y) {
@@ -285,10 +354,18 @@ void MLX90640_ReadUpscaleAndDisplay() {
 
 
 void MLX90640_ReadAndDisplay(void) {
+  int a = HAL_GetTick();
   MLX90640_GetFrameData(MLX90640_ADDR, frame);
+  int b = HAL_GetTick();
   float Ta = MLX90640_GetTa(frame, &mlxParams);
   float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-  MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 1);
+  int c = HAL_GetTick();
+  MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 1, 1);
+  int d = HAL_GetTick();
+  int x = d - c;
+  int y = d - a;
+  int z = b - a;
+  int v = 0;
 }
 
 /* USER CODE END 0 */
@@ -327,6 +404,7 @@ int main(void) {
   /* USER CODE BEGIN 2 */
   LCD_Init();
   MLX90640_Init();
+  DrawHeatmp();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -354,7 +432,7 @@ int main(void) {
     }
 
     if (fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
-      DrawHeatmpIfNecessary();
+      DrawHeatmp();
       did_nothing = 0;
     }
 
@@ -390,7 +468,7 @@ void SystemClock_Config(void) {
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 72;
+  RCC_OscInitStruct.PLL.PLLN = 84;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {

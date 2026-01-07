@@ -396,164 +396,104 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 
 //------------------------------------------------------------------------------
 
-void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int display)
+void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int display, int autoscale)
 {
-    float vdd;
-    float ta;
-    float ta4;
-    float tr4;
-    float taTr;
-    float gain;
+    // 1. Pre-calculate common environmental constants
+    float vdd = MLX90640_GetVdd(frameData, params);
+    float ta = MLX90640_GetTa(frameData, params);
+    uint16_t subPage = frameData[833];
+
+    float ta4 = powf(ta + 273.15f, 4);
+    float tr4 = powf(tr + 273.15f, 4);
+    float taTr = tr4 - (tr4 - ta4) / emissivity;
+
+    float ktaScale = POW2(params->ktaScale);
+    float kvScale = POW2(params->kvScale);
+    float alphaScale = POW2(params->alphaScale);
+
+    // Constant factors for the pixel loop
+    float ta25 = ta - 25.0f;
+    float vdd33 = vdd - 3.3f;
+    float commonCompensator = (1.0f + params->cpKta * ta25) * (1.0f + params->cpKv * vdd33);
+    float gain = (float)params->gainEE / (int16_t)frameData[778];
+
+    // 2. Pre-calculate Gain/CP (once per frame)
     float irDataCP[2];
-    float irData;
-    float alphaCompensated;
-    uint8_t mode;
-    int8_t ilPattern;
-    int8_t chessPattern;
-    int8_t pattern;
-    int8_t conversionPattern;
-    float Sx;
-    float To;
+    irDataCP[0] = ((int16_t)frameData[776] * gain - params->cpOffset[0] * commonCompensator);
+    float cpOffset1 = (frameData[832] & MLX90640_CTRL_MEAS_MODE_MASK) >> 5 == params->calibrationModeEE
+                      ? params->cpOffset[1] : (params->cpOffset[1] + params->ilChessC[0]);
+    irDataCP[1] = ((int16_t)frameData[808] * gain - cpOffset1 * commonCompensator);
+
     float alphaCorrR[4];
-    int8_t range;
-    uint16_t subPage;
-    float ktaScale;
-    float kvScale;
-    float alphaScale;
-    float kta;
-    float kv;
+    alphaCorrR[0] = 1.0f / (1.0f + params->ksTo[0] * 40.0f);
+    alphaCorrR[1] = 1.0f;
+    alphaCorrR[2] = (1.0f + params->ksTo[1] * params->ct[2]);
+    alphaCorrR[3] = alphaCorrR[2] * (1.0f + params->ksTo[2] * (params->ct[3] - params->ct[2]));
 
-    subPage = frameData[833];
-    vdd = MLX90640_GetVdd(frameData, params);
-    ta = MLX90640_GetTa(frameData, params);
+    float min = 1000.0f; // Simplified FLT_MAX
+    float max = -1000.0f;
+    uint8_t mode = (frameData[832] & MLX90640_CTRL_MEAS_MODE_MASK) >> 5;
+    float irDataCPSub = params->tgc * irDataCP[subPage];
 
-    ta4 = (ta + 273.15);
-    ta4 = ta4 * ta4;
-    ta4 = ta4 * ta4;
-    tr4 = (tr + 273.15);
-    tr4 = tr4 * tr4;
-    tr4 = tr4 * tr4;
-    taTr = tr4 - (tr4-ta4)/emissivity;
-
-    ktaScale = POW2(params->ktaScale);
-    kvScale = POW2(params->kvScale);
-    alphaScale = POW2(params->alphaScale);
-
-    alphaCorrR[0] = 1 / (1 + params->ksTo[0] * 40);
-    alphaCorrR[1] = 1 ;
-    alphaCorrR[2] = (1 + params->ksTo[1] * params->ct[2]);
-    alphaCorrR[3] = alphaCorrR[2] * (1 + params->ksTo[2] * (params->ct[3] - params->ct[2]));
-
-//------------------------- Gain calculation -----------------------------------
-
-    gain = (float)params->gainEE / (int16_t)frameData[778];
-
-//------------------------- To calculation -------------------------------------
-    mode = (frameData[832] & MLX90640_CTRL_MEAS_MODE_MASK) >> 5;
-
-    irDataCP[0] = (int16_t)frameData[776] * gain;
-    irDataCP[1] = (int16_t)frameData[808] * gain;
-
-    irDataCP[0] = irDataCP[0] - params->cpOffset[0] * (1 + params->cpKta * (ta - 25)) * (1 + params->cpKv * (vdd - 3.3));
-    if( mode ==  params->calibrationModeEE)
+    // 3. Optimized Pixel Loop
+    for(int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
     {
-        irDataCP[1] = irDataCP[1] - params->cpOffset[1] * (1 + params->cpKta * (ta - 25)) * (1 + params->cpKv * (vdd - 3.3));
-    }
-    else
-    {
-      irDataCP[1] = irDataCP[1] - (params->cpOffset[1] + params->ilChessC[0]) * (1 + params->cpKta * (ta - 25)) * (1 + params->cpKv * (vdd - 3.3));
-    }
+        // Faster pattern logic
+        int row = pixelNumber >> 5;       // pixelNumber / 32
+        int col = pixelNumber & 31;       // pixelNumber % 32
+        int ilPattern = row & 1;          // Equivalent to (pixelNumber / 32) % 2
+        int pattern = (mode == 0) ? ilPattern : (ilPattern ^ (col & 1));
 
-    float min = FLT_MAX;
-    float max = FLT_MIN;
-
-    for( int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
-    {
-        ilPattern = pixelNumber / 32 - (pixelNumber / 64) * 2;
-        chessPattern = ilPattern ^ (pixelNumber - (pixelNumber/2)*2);
-        conversionPattern = ((pixelNumber + 2) / 4 - (pixelNumber + 3) / 4 + (pixelNumber + 1) / 4 - pixelNumber / 4) * (1 - 2 * ilPattern);
-
-        if(mode == 0)
+        if(pattern == subPage)
         {
-          pattern = ilPattern;
-        }
-        else
-        {
-          pattern = chessPattern;
-        }
+            // Calculate IR Data
+            float kta = params->kta[pixelNumber] / ktaScale;
+            float kv = params->kv[pixelNumber] / kvScale;
+            float irData = (int16_t)frameData[pixelNumber] * gain;
+            irData -= params->offset[pixelNumber] * (1.0f + kta * ta25) * (1.0f + kv * vdd33);
 
-        if(pattern == frameData[833])
-        {
-            irData = (int16_t)frameData[pixelNumber] * gain;
-
-            kta = params->kta[pixelNumber]/ktaScale;
-            kv = params->kv[pixelNumber]/kvScale;
-            irData = irData - params->offset[pixelNumber]*(1 + kta*(ta - 25))*(1 + kv*(vdd - 3.3));
-
-            if(mode !=  params->calibrationModeEE)
-            {
-              irData = irData + params->ilChessC[2] * (2 * ilPattern - 1) - params->ilChessC[1] * conversionPattern;
+            if(mode != params->calibrationModeEE) {
+                int conversionPattern = (((pixelNumber + 2) >> 2) - ((pixelNumber + 3) >> 2) + ((pixelNumber + 1) >> 2) - (pixelNumber >> 2)) * (1 - 2 * ilPattern);
+                irData += params->ilChessC[2] * (2 * ilPattern - 1) - params->ilChessC[1] * conversionPattern;
             }
 
-            irData = irData - params->tgc * irDataCP[subPage];
-            irData = irData / emissivity;
+            irData = (irData - irDataCPSub) / emissivity;
 
-            alphaCompensated = SCALEALPHA*alphaScale/params->alpha[pixelNumber];
-            alphaCompensated = alphaCompensated*(1 + params->KsTa * (ta - 25));
+            // Temperature Calculation
+            float alphaComp = (SCALEALPHA * alphaScale / params->alpha[pixelNumber]) * (1.0f + params->KsTa * ta25);
 
-            Sx = alphaCompensated * alphaCompensated * alphaCompensated * (irData + alphaCompensated * taTr);
-            Sx = sqrt(sqrt(Sx)) * params->ksTo[1];
+            float Sx = powf(alphaComp, 3) * (irData + alphaComp * taTr);
+            Sx = sqrtf(sqrtf(Sx)) * params->ksTo[1];
 
-            To = sqrt(sqrt(irData/(alphaCompensated * (1 - params->ksTo[1] * 273.15) + Sx) + taTr)) - 273.15;
+            float To = sqrtf(sqrtf(irData / (alphaComp * (1.0f - params->ksTo[1] * 273.15f) + Sx) + taTr)) - 273.15f;
 
-            if(To < params->ct[1])
-            {
-                range = 0;
-            }
-            else if(To < params->ct[2])
-            {
-                range = 1;
-            }
-            else if(To < params->ct[3])
-            {
-                range = 2;
-            }
-            else
-            {
-                range = 3;
-            }
+            // Range Selection (Branchless-friendly)
+            int range = (To >= params->ct[1]) + (To >= params->ct[2]) + (To >= params->ct[3]);
 
-            To = sqrt(sqrt(irData / (alphaCompensated * alphaCorrR[range] * (1 + params->ksTo[range] * (To - params->ct[range]))) + taTr)) - 273.15;
+            // Final Refinement
+            To = sqrtf(sqrtf(irData / (alphaComp * alphaCorrR[range] * (1.0f + params->ksTo[range] * (To - params->ct[range]))) + taTr)) - 273.15f;
 
-
-            // immediate display
-            if (fabs(To - result[pixelNumber]) > 0.5f) {
-                if (To < min) {
-                    min = To;
-                }
-                else if (To > max) {
-                    max = To;
-                }
+            // 4. Optimized Display Check
+            float diff = To - result[pixelNumber];
+            if (diff > 0.5f || diff < -0.5f) {
+                if (To < min) min = To;
+                if (To > max) max = To;
 
                 if (display) {
-                    int x = pixelNumber % 32;
-                    int y = pixelNumber / 32;
-                    ILI9341_Draw_Rectangle(x * pixel_size + offset_x, y * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(To));
+                    ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(To));
                 }
-
                 result[pixelNumber] = To;
             }
-
         }
     }
 
-    if (min < tMin) {
-        tMin = (int) (min - 0.5f);
-    }
-    if (max > tMax) {
-        tMax = (int) (max + 0.5f);
+    // Global Min/Max update
+    if (autoscale) {
+        if (min < tMin) tMin = (int)(min - 0.5f);
+        if (max > tMax) tMax = (int)(max + 0.5f);
     }
 }
+
 
 //------------------------------------------------------------------------------
 

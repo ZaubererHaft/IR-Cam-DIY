@@ -75,7 +75,7 @@
 
 #define POW2(x) pow(2, (double)x)
 
-#define SCALEALPHA 0.000001
+#define SCALEALPHA 0.000001f
 
 typedef struct {
     int16_t kVdd;
@@ -124,7 +124,7 @@ float MLX90640_GetTa(uint16_t *frameData, const paramsMLX90640 *params);
 void MLX90640_GetImage(uint16_t *frameData, const paramsMLX90640 *params, float *result);
 
 void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr,
-                                    float *result, int display);
+                                    float *result, int display, int autoscale);
 
 
 int MLX90640_SetResolution(uint8_t slaveAddr, uint8_t resolution);
