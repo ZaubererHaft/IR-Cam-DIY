@@ -87,6 +87,8 @@ float tMax = 25.0f;
 float tMinOld;
 float tMaxOld;
 
+uint16_t frames = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -186,6 +188,19 @@ void DrawHeatmp(void) {
   y += pixel_size;
   ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMax));
   ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
+}
+
+
+void DrawFPS(void) {
+  int x = (ir_width + 1) * pixel_size + offset_x;
+  int y = ir_height * pixel_size / 2;
+
+
+  char buff[15] = "FPS:    ";
+  ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
+
+  itoa((int) frames, &buff[5], 10);
+  ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
 }
 
 void UpscaleTimesTwo(const float *original_image, float *upscaled_image, const int width_before,
@@ -352,22 +367,12 @@ void MLX90640_ReadUpscaleAndDisplay() {
   }
 }
 
-
 void MLX90640_ReadAndDisplay(void) {
-  int a = HAL_GetTick();
   MLX90640_GetFrameData(MLX90640_ADDR, frame);
-  int b = HAL_GetTick();
   float Ta = MLX90640_GetTa(frame, &mlxParams);
   float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-  int c = HAL_GetTick();
   MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 1, 1);
-  int d = HAL_GetTick();
-  int x = d - c;
-  int y = d - a;
-  int z = b - a;
-  int v = 0;
 }
-
 /* USER CODE END 0 */
 
 /**
@@ -405,6 +410,7 @@ int main(void) {
   LCD_Init();
   MLX90640_Init();
   DrawHeatmp();
+  DrawFPS();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -412,9 +418,18 @@ int main(void) {
   tMinOld = tMin;
   tMaxOld = tMax;
   int did_nothing;
+  uint32_t frame_counter = HAL_GetTick();
 
   while (1) {
     did_nothing = 1;
+
+    uint32_t count = HAL_GetTick();
+    if (count - frame_counter >= 1000) {
+      frame_counter = count;
+      DrawFPS();
+      did_nothing = 0;
+      frames = 0;
+    }
 
     if (change_record) {
       ChangeAndDisplayRecordState();
@@ -428,6 +443,7 @@ int main(void) {
       } else {
         MLX90640_ReadAndDisplay();
       }
+      frames++;
       did_nothing = 0;
     }
 
