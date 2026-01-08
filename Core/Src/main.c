@@ -81,8 +81,8 @@ volatile uint8_t upscale = 0;
 
 uint16_t (*TempConverter)(float) = &TempToMagma565_Fast;
 
-float tMin = 20.0f;
-float tMax = 25.0f;
+float tMin = 15.0f;
+float tMax = 37.0f;
 float tMinOld;
 float tMaxOld;
 
@@ -172,27 +172,31 @@ void DrawHeatmp(void) {
 
   char buff[10] = {};
   itoa(tMin, buff, 10);
-  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMin));
-  ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
+  ILI9341_Draw_Text(buff, x + 20, y, WHITE, 1, BLACK);
+
+  int chunks = 20;
+  float step = (tMax - tMin) / chunks;
+  for (int i = 0; i < chunks; ++i) {
+    float val = tMin + i * step;
+    ILI9341_Draw_Rectangle(x, y, 10, 4, TempConverter(val));
+
+    y += 4;
+  }
 
   memset(buff, 0, sizeof(buff));
   float mid = (tMax + fabs(tMin)) / 2;
   itoa(mid, buff, 10);
-  y += pixel_size;
-  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(mid));
-  ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
+  ILI9341_Draw_Text(buff, x + 20, y - chunks * 4 / 2 - 4, WHITE, 1, BLACK);
 
   memset(buff, 0, sizeof(buff));
   itoa(tMax, buff, 10);
-  y += pixel_size;
-  ILI9341_Draw_Rectangle(x, y, pixel_size, pixel_size, TempConverter(tMax));
-  ILI9341_Draw_Text(buff, x + pixel_size * 2, y, WHITE, 1, BLACK);
+  ILI9341_Draw_Text(buff, x + 20, y - 8, WHITE, 1, BLACK);
 }
 
 
 void DrawFPS(void) {
   int x = (ir_width + 1) * pixel_size + offset_x;
-  int y = ir_height * pixel_size / 2;
+  int y = lcd_height - 15;
 
 
   char buff[15] = "FPS:    ";
@@ -370,7 +374,7 @@ void MLX90640_ReadAndDisplay(void) {
   MLX90640_GetFrameData(MLX90640_ADDR, frame);
   float Ta = MLX90640_GetTa(frame, &mlxParams);
   float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-  MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 1, 1);
+  MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 1, 0);
 }
 /* USER CODE END 0 */
 
