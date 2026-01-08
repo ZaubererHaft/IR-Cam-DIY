@@ -38,12 +38,11 @@ int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddr
         return -1;
     }
 
-    for (cnt = 0; cnt < nMemAddressRead * 2; cnt += 2) {
-        uint8_t tmpbytelsb = bp[cnt + 1];
-        bp[cnt + 1] = bp[cnt];
-        bp[cnt] = tmpbytelsb;
-    }
+    uint16_t *p = (uint16_t *)bp;
 
+    for (uint32_t i = 0; i < nMemAddressRead; i++) {
+        p[i] = __REV16(p[i]);
+    }
 
     return 0;
 }

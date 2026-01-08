@@ -47,7 +47,7 @@
 #define  FPS32HZ  0x06
 
 #define  MLX90640_ADDR 0x33
-#define	 RefreshRate FPS8HZ
+#define	 RefreshRate FPS16HZ
 #define  TA_SHIFT 8 //Default shift for MLX90640 in open air
 /* USER CODE END PD */
 
@@ -69,7 +69,6 @@ static paramsMLX90640 mlxParams;
 static uint16_t frame[834];
 static uint16_t eeMLX90640[832];
 static float image[32 * 24];
-static uint16_t pixels[32 * 24];
 static float image_upscaled_1[64 * 48];
 
 static float emissivity = 0.95f;

@@ -395,6 +395,8 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 }
 
 //------------------------------------------------------------------------------
+#define MIN_DIF_TO_REDRAW 0.75f
+int rescaled = 0;
 
 void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int display, int autoscale)
 {
@@ -475,7 +477,7 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
 
             // 4. Optimized Display Check
             float diff = To - result[pixelNumber];
-            if (diff > 0.5f || diff < -0.5f) {
+            if (diff > MIN_DIF_TO_REDRAW || diff < -MIN_DIF_TO_REDRAW || rescaled) {
                 if (To < min) min = To;
                 if (To > max) max = To;
 
@@ -487,10 +489,18 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
         }
     }
 
+    rescaled = 0;
+
     // Global Min/Max update
     if (autoscale) {
-        if (min < tMin) tMin = (int)(min - 0.5f);
-        if (max > tMax) tMax = (int)(max + 0.5f);
+        if (min < tMin) {
+            tMin = (int)(min - 2.5f);
+            rescaled = 1;
+        }
+        if (max > tMax) {
+            tMax = (int)(max + 2.5f);
+            rescaled = 1;
+        }
     }
 }
 
