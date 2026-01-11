@@ -363,10 +363,12 @@ void UpscaleTimesTwoAndDisplayImmediately(const float *original_image, const int
 
 void MLX90640_ReadAndDisplay(void) {
   if (new_data_available) {
+    frames++;
+
     new_data_available = 0;
 
     int status = MLX90640_CompleteFrameDataAsync(MLX90640_ADDR, data_frame);
-    if (status != 0) {
+    if (status < 0) {
       Error_Handler();
     }
 
@@ -461,7 +463,6 @@ int main(void) {
 
     if (record) {
       MLX90640_ReadAndDisplay();
-      frames++;
       did_nothing = 0;
     }
 

@@ -126,6 +126,13 @@ int MLX90640_CompleteFrameDataAsync(uint8_t slaveAddr, uint16_t *frameData) {
     uint16_t data[64];
     uint8_t cnt = 0;
 
+
+    // correct endianess
+    uint16_t sizeInBytes = MLX90640_PIXEL_NUM * 2;
+    for (uint32_t i = 0; i < sizeInBytes; i++) {
+        frameData[i] = __REV16(frameData[i]);
+    }
+
     error = MLX90640_I2CRead(slaveAddr, MLX90640_AUX_DATA_START_ADDRESS, MLX90640_AUX_NUM, data);
     if(error != MLX90640_NO_ERROR)
     {
@@ -471,7 +478,7 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 }
 
 //------------------------------------------------------------------------------
-#define MIN_DIF_TO_REDRAW 2.5f //ToDo: make dynamic, e.g. (max - min) / 7
+#define MIN_DIF_TO_REDRAW 0.5f //ToDo: make dynamic, e.g. (max - min) / 7
 int rescaled = 0;
 
 void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int display, int autoscale)
