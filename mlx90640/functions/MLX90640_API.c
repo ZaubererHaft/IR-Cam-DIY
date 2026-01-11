@@ -117,15 +117,14 @@ int MLX90640_TriggerMeasurement(uint8_t slaveAddr)
 }
 
 extern volatile int new_data_available;
+    uint16_t g_statusRegister;
 
 
 int MLX90640_CompleteFrameDataAsync(uint8_t slaveAddr, uint16_t *frameData) {
     uint16_t controlRegister1;
-    uint16_t statusRegister;
     int error = 1;
     uint16_t data[64];
     uint8_t cnt = 0;
-
 
     // correct endianess
     uint16_t sizeInBytes = MLX90640_PIXEL_NUM * 2;
@@ -142,7 +141,7 @@ int MLX90640_CompleteFrameDataAsync(uint8_t slaveAddr, uint16_t *frameData) {
     error = MLX90640_I2CRead(slaveAddr, MLX90640_CTRL_REG, 1, &controlRegister1);
     frameData[832] = controlRegister1;
     //frameData[833] = statusRegister & 0x0001;
-    frameData[833] = MLX90640_GET_FRAME(statusRegister);
+    frameData[833] = MLX90640_GET_FRAME(g_statusRegister);
 
     if(error != MLX90640_NO_ERROR)
     {
@@ -170,18 +169,17 @@ int MLX90640_CompleteFrameDataAsync(uint8_t slaveAddr, uint16_t *frameData) {
 
 int MLX90640_GetFrameDataAsync(uint8_t slaveAddr, uint16_t *frameData) {
     uint16_t dataReady = 0;
-    uint16_t statusRegister;
     int error = 0;
 
     while(dataReady == 0)
     {
-        error = MLX90640_I2CRead(slaveAddr, MLX90640_STATUS_REG, 1, &statusRegister);
+        error = MLX90640_I2CRead(slaveAddr, MLX90640_STATUS_REG, 1, &g_statusRegister);
         if(error != MLX90640_NO_ERROR)
         {
             return error;
         }
         //dataReady = statusRegister & 0x0008;
-        dataReady = MLX90640_GET_DATA_READY(statusRegister);
+        dataReady = MLX90640_GET_DATA_READY(g_statusRegister);
     }
 
     error = MLX90640_I2CWrite(slaveAddr, MLX90640_STATUS_REG, MLX90640_INIT_STATUS_VALUE);
@@ -478,7 +476,7 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 }
 
 //------------------------------------------------------------------------------
-#define MIN_DIF_TO_REDRAW 0.5f //ToDo: make dynamic, e.g. (max - min) / 7
+#define MIN_DIF_TO_REDRAW 0.25f //ToDo: make dynamic, e.g. (max - min) / 7
 int rescaled = 0;
 
 void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int display, int autoscale)
