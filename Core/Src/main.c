@@ -361,7 +361,7 @@ void UpscaleTimesTwoAndDisplayImmediately(const float *original_image, const int
 }
 
 
-void MLX90640_ReadAndDisplay(void) {
+int MLX90640_ReadAndDisplay(void) {
   if (new_data_available) {
     frames++;
 
@@ -383,8 +383,23 @@ void MLX90640_ReadAndDisplay(void) {
 
     float Ta = MLX90640_GetTa(display_frame, &mlxParams);
     float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-    MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, image, 1, 0);
+    MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, image, !upscale, 0);
+
+    if (upscale) {
+      UpscaleTimesTwo(image, image_upscaled_1, ir_width, ir_height);
+
+      for (int y = 0; y < ir_height * 2; ++y) {
+        for (int x = 0; x < ir_width * 2; ++x) {
+          ILI9341_Draw_Rectangle(x * pixel_size / 2 + offset_x, y * pixel_size / 2 + offset_y, pixel_size / 2,
+                                 pixel_size / 2,
+                                 TempConverter(image_upscaled_1[y * ir_width * 2 + x]));
+        }
+      }
+    }
+    return 1;
   }
+
+  return 0;
 }
 
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
@@ -462,8 +477,9 @@ int main(void) {
     }
 
     if (record) {
-      MLX90640_ReadAndDisplay();
-      did_nothing = 0;
+      if (MLX90640_ReadAndDisplay()) {
+        did_nothing = 0;
+      }
     }
 
     if (fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
