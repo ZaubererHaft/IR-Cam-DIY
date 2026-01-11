@@ -113,6 +113,10 @@ int MLX90640_SynchFrame(uint8_t slaveAddr);
 
 int MLX90640_TriggerMeasurement(uint8_t slaveAddr);
 
+int MLX90640_CompleteFrameDataAsync(uint8_t slaveAddr, uint16_t *frameData);
+
+int MLX90640_GetFrameDataAsync(uint8_t slaveAddr, uint16_t *frameData);
+
 int MLX90640_GetFrameData(uint8_t slaveAddr, uint16_t *frameData);
 
 int MLX90640_ExtractParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);

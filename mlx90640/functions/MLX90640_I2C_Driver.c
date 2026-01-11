@@ -25,6 +25,16 @@ void MLX90640_I2CInit() {
     //init already done in main.c
 }
 
+int MLX90640_I2CReadAsync(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddressRead, uint16_t *data) {
+    uint16_t sizeInBytes = nMemAddressRead * 2;
+
+    if (HAL_I2C_Mem_Read_DMA(&hi2c2, (slaveAddr << 1), startAddress, I2C_MEMADD_SIZE_16BIT, (uint8_t*)data, sizeInBytes) != HAL_OK) {
+        return -1;
+    }
+
+    return 0;
+}
+
 
 int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddressRead, uint16_t *data) {
     uint8_t *bp = (uint8_t *) data;

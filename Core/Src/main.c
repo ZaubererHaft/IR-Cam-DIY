@@ -58,6 +58,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c2;
+DMA_HandleTypeDef hdma_i2c2_rx;
 
 SPI_HandleTypeDef hspi1;
 DMA_HandleTypeDef hdma_spi1_tx;
@@ -66,8 +67,15 @@ TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 static paramsMLX90640 mlxParams;
-static uint16_t frame[834];
+
+static uint16_t frame_1[834];
+static uint16_t frame_2[834];
+
+static uint16_t *data_frame = frame_2;
+static uint16_t *display_frame = frame_1;
+volatile int new_data_available = 0;
 static uint16_t eeMLX90640[832];
+
 static float image[32 * 24];
 static float image_upscaled_1[64 * 48];
 
@@ -325,8 +333,7 @@ void UpscaleTimesTwoAndDisplayImmediately(const float *original_image, const int
             bottom = original_image[(y_old + 1) * width_before + x_old];
           }
           temp = (top + bottom) / 2.0f;
-        }
-        else if (x == width_new - 1) {
+        } else if (x == width_new - 1) {
           float top = original_image[y_old * width_before + x_old];
           float bottom = top;
           if (y < height_new - 1) {
@@ -353,29 +360,37 @@ void UpscaleTimesTwoAndDisplayImmediately(const float *original_image, const int
   }
 }
 
-void MLX90640_ReadUpscaleAndDisplay() {
-  for (int i = 0; i < 2; ++i) {
-    MLX90640_GetFrameData(MLX90640_ADDR, frame);
-    float Ta = MLX90640_GetTa(frame, &mlxParams);
-    float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-    MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 0, 1);
-  }
-  UpscaleTimesTwo(image, image_upscaled_1, ir_width, ir_height);
-  for (int y = 0; y < ir_height * 2; ++y) {
-    for (int x = 0; x < ir_width * 2; ++x) {
-      ILI9341_Draw_Rectangle(x * pixel_size / 2 + offset_x, y * pixel_size / 2 + offset_y, pixel_size / 2,
-                             pixel_size / 2,
-                             TempConverter(image_upscaled_1[y * ir_width * 2 + x]));
+
+void MLX90640_ReadAndDisplay(void) {
+  if (new_data_available) {
+    new_data_available = 0;
+
+    int status = MLX90640_CompleteFrameDataAsync(MLX90640_ADDR, data_frame);
+    if (status != 0) {
+      Error_Handler();
     }
+
+    uint16_t *tmp = display_frame;
+    display_frame = data_frame;
+    data_frame = tmp;
+
+    status = MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
+    if (status != 0) {
+      Error_Handler();
+    }
+
+    float Ta = MLX90640_GetTa(display_frame, &mlxParams);
+    float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
+    MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, image, 1, 0);
   }
 }
 
-void MLX90640_ReadAndDisplay(void) {
-  MLX90640_GetFrameData(MLX90640_ADDR, frame);
-  float Ta = MLX90640_GetTa(frame, &mlxParams);
-  float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-  MLX90640_CalculateToAndDisplay(frame, &mlxParams, emissivity, tr, image, 1, 0);
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+  if (hi2c == &hi2c2) {
+    new_data_available = 1;
+  }
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -422,6 +437,10 @@ int main(void) {
   tMaxOld = tMax;
   int did_nothing;
   uint32_t frame_counter = HAL_GetTick();
+  int status = MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
+  if (status != 0) {
+    Error_Handler();
+  }
 
   while (1) {
     did_nothing = 1;
@@ -441,11 +460,7 @@ int main(void) {
     }
 
     if (record) {
-      if (upscale) {
-        MLX90640_ReadUpscaleAndDisplay();
-      } else {
-        MLX90640_ReadAndDisplay();
-      }
+      MLX90640_ReadAndDisplay();
       frames++;
       did_nothing = 0;
     }
@@ -621,8 +636,12 @@ static void MX_TIM3_Init(void) {
 static void MX_DMA_Init(void) {
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream2_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
