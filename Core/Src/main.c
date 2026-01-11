@@ -367,20 +367,12 @@ int MLX90640_ReadAndDisplay(void) {
 
     new_data_available = 0;
 
-    int status = MLX90640_CompleteFrameDataAsync(MLX90640_ADDR, data_frame);
-    if (status < 0) {
-      Error_Handler();
-    }
-
+    MLX90640_CompleteFrameDataAsync(MLX90640_ADDR, data_frame);
     uint16_t *tmp = display_frame;
     display_frame = data_frame;
     data_frame = tmp;
 
-    status = MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
-    if (status != 0) {
-      Error_Handler();
-    }
-
+    MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
     float Ta = MLX90640_GetTa(display_frame, &mlxParams);
     float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
     MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, image, !upscale, 0);
@@ -396,6 +388,7 @@ int MLX90640_ReadAndDisplay(void) {
         }
       }
     }
+
     return 1;
   }
 
