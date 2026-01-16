@@ -74,6 +74,13 @@ void Error_Handler(void);
 #define CLK_GPIO_Port GPIOA
 #define DIN_Pin GPIO_PIN_7
 #define DIN_GPIO_Port GPIOA
+#define STICK_X_Pin GPIO_PIN_0
+#define STICK_X_GPIO_Port GPIOB
+#define STICK_Y_Pin GPIO_PIN_1
+#define STICK_Y_GPIO_Port GPIOB
+#define STICK_Z_Pin GPIO_PIN_2
+#define STICK_Z_GPIO_Port GPIOB
+#define STICK_Z_EXTI_IRQn EXTI2_IRQn
 #define SCL_Pin GPIO_PIN_10
 #define SCL_GPIO_Port GPIOB
 #define SDA_Pin GPIO_PIN_3

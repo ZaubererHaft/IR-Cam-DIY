@@ -518,6 +518,8 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
     uint8_t mode = (frameData[832] & MLX90640_CTRL_MEAS_MODE_MASK) >> 5;
     float irDataCPSub = params->tgc * irDataCP[subPage];
 
+    float alpha = 0.65f; // Wert zwischen 0 (starke Glättung) und 1 (keine Glättung)
+
     // 3. Optimized Pixel Loop
     for(int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
     {
@@ -555,6 +557,8 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
 
             // Final Refinement
             To = sqrtf(sqrtf(irData / (alphaComp * alphaCorrR[range] * (1.0f + params->ksTo[range] * (To - params->ct[range]))) + taTr)) - 273.15f;
+
+            To = (alpha * To) + ((1.0f - alpha) * result[pixelNumber]);
 
             // 4. Optimized Display Check
             float diff = To - result[pixelNumber];
