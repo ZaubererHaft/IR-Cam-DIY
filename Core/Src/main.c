@@ -35,6 +35,12 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef enum MENU_ {
+  MAIN,
+  SELECT_HEATMAP
+} MENU;
+
+MENU cur_entry = MAIN;
 
 /* USER CODE END PTD */
 
@@ -79,17 +85,11 @@ volatile int new_data_available = 0;
 static uint16_t eeMLX90640[832];
 
 static float image[32 * 24];
-static float image_upscaled_1[64 * 48];
-
 static float emissivity = 0.95f;
 static int mlx_status;
 
 volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
-volatile uint8_t record = 0;
-volatile uint8_t change_record = 1;
-volatile uint8_t upscale = 0;
 volatile uint8_t show_menu = 0;
-
 
 uint16_t (*TempConverter)(float) = &TempToMagma565_Fast;
 
@@ -98,8 +98,15 @@ float tMax = 37.0f;
 float tMinOld;
 float tMaxOld;
 
+int redraw_menu = 1;
+int redraw_record = 1;
+uint32_t last_stick_pressed = 0;
 uint16_t frames = 0;
+uint16_t menu_records = 3;
+uint16_t cursor_Y = 1;
+int stick_recently_updated = 0;
 
+volatile int force_redraw = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -121,9 +128,7 @@ void LCD_Init(void) {
   ILI9341_Init();
   ILI9341_Fill_Screen(BLACK);
   ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-
   ILI9341_Draw_Text(" D-CAM ", 0, 0, WHITE, 2, BLACK);
-
   ILI9341_Draw_Rectangle(offset_x, offset_y, ir_width * pixel_size, ir_height * pixel_size,DARKGREY);
 }
 
@@ -147,25 +152,42 @@ void MLX90640_Init(void) {
 }
 
 void ChangeAndDisplayRecordState(void) {
-  record = !record;
-
   ILI9341_Draw_Rectangle(lcd_width - pixel_size * 4, 0, pixel_size * 4, pixel_size * 2 + 4, BLACK);
 
-  if (record) {
-    ILI9341_Draw_Filled_Circle(lcd_width - pixel_size * 2 + 4, pixel_size, pixel_size, RED);
-  } else {
+  if (show_menu) {
     ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2, 0, 4, pixel_size * 2, LIGHTGREY);
     ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2 + 6, 0, 4, pixel_size * 2, LIGHTGREY);
+  } else {
+    ILI9341_Draw_Filled_Circle(lcd_width - pixel_size * 2 + 4, pixel_size, pixel_size, RED);
   }
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-  if (GPIO_Pin == USER_BUTTON_Pin) {
-    change_record = 1;
-  }
-  else if (GPIO_Pin == STICK_Z_Pin) {
-    change_record = 1;
-    show_menu = !show_menu;
+  if (GPIO_Pin == STICK_Z_Pin) {
+
+    uint32_t time = HAL_GetTick();
+
+    if (last_stick_pressed - time > 500) {
+      if (show_menu) {
+        if (cur_entry == MAIN) {
+          if (cursor_Y == 2) {
+            show_menu = 0;
+            force_redraw = 2;
+          }
+        }
+        else if (cur_entry == SELECT_HEATMAP) {
+
+        }
+      }
+      else {
+        cursor_Y = 1;
+        show_menu = 1;
+      }
+
+      redraw_menu = 1;
+      last_stick_pressed = time;
+      redraw_record = 1;
+    }
   }
 }
 
@@ -208,7 +230,6 @@ void DrawFPS(void) {
   int x = (ir_width + 1) * pixel_size + offset_x;
   int y = lcd_height - 15;
 
-
   char buff[15] = "FPS:    ";
   ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
 
@@ -216,152 +237,37 @@ void DrawFPS(void) {
   ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
 }
 
-void UpscaleTimesTwo(const float *original_image, float *upscaled_image, const int width_before,
-                     const int height_before) {
-  int width_new = width_before * 2;
-  int height_new = height_before * 2;
+void DrawMenuLine(const char *text, uint16_t line) {
+  uint16_t color_foreground = WHITE;
+  uint16_t color_background = BLACK;
 
-  // Copy real data to checkerboard-like structure like this
-  // x - x - x .... -     0
-  // - - - - - .... -     1
-  // x - x - x .... -     2
-  // - - - - - .... -     3
-  for (int x = 0; x < width_before; ++x) {
-    for (int y = 0; y < height_before; ++y) {
-      upscaled_image[(y * 2) * width_new + x * 2] = original_image[y * width_before + x];
-    }
+  if (cursor_Y == line) {
+    color_foreground = BLACK;
+    color_background = WHITE;
+  }
+  else {
+    color_foreground = WHITE;
+    color_background = BLACK;
   }
 
-  for (int y = 0; y < height_new; ++y) {
-    for (int x = 0; x < width_new; ++x) {
-      // row even -> partially filled -> interpolate only between two neighbors
+  uint16_t x = lcd_width / 2 - menu_width / 2;
+  uint16_t y = lcd_height / 2 - menu_height / 2 + font_size * line;
 
-      if (y % 2 == 0) {
-        //skips every second integer (which has a "real" pixel value)
-        if (x % 2 != 0) {
-          float left;
-          float right;
+  ILI9341_Draw_Rectangle(x, y, menu_width, font_size, color_background);
+  ILI9341_Draw_Text(text, x, y, color_foreground, 1, color_background);
 
-          if (x == width_new - 1) {
-            left = upscaled_image[y * width_new + x - 1];
-            right = left;
-          } else {
-            left = upscaled_image[y * width_new + x - 1];
-            right = upscaled_image[y * width_new + x + 1];
-          }
-          upscaled_image[y * width_new + x] = (left + right) / 2.0f;
-        }
-      }
-      //row odd -> empty -> interpolate between the 4 surrounding cells
-      else {
-        // boundary cells left -> only use top and bottom
-        // x x ... (interpolated before)
-        // - - ... (value searched)
-        // x - ...
-        if (x == 0) {
-          float top = upscaled_image[(y - 1) * width_new + x];
-          float bottom = top;
-          // remark: the case y == 0 is handled in the very first if and not relevant, here
-          if (y < height_new - 1) {
-            bottom = upscaled_image[(y + 1) * width_new + x];
-          }
-          upscaled_image[y * width_new + x] = (top + bottom) / 2.0f;
-        }
-        // boundary cells right -> there is only an (already interpolated) top value due to the even structure of the checkerboard.
-        // instead, use its left neighbor
-        // ... x x (interpolated before)
-        // ... x - (value searched)
-        // ... x - (next row has checkerboard pattern)
-        else if (x == width_new - 1) {
-          float top = upscaled_image[(y - 1) * width_new + x];
-          float bottom = top;
-          if (y < height_new - 1) {
-            bottom = upscaled_image[(y + 1) * width_new + x - 1];
-          }
-          upscaled_image[y * width_new + x] = (top + bottom) / 2.0f;
-        } else {
-          float left_top = upscaled_image[(y - 1) * width_new + x - 1];
-          float right_top = upscaled_image[(y - 1) * width_new + x + 1];
-          float left_bottom = left_top;
-          float right_bottom = right_top;
-          if (y < height_new - 1) {
-            left_bottom = upscaled_image[(y + 1) * width_new + x - 1];
-            right_bottom = upscaled_image[(y + 1) * width_new + x + 1];
-          }
-          upscaled_image[y * width_new + x] = (left_top + right_top + left_bottom + right_bottom) / 4.0f;
-        }
-      }
-    }
-  }
 }
 
-void UpscaleTimesTwoAndDisplayImmediately(const float *original_image, const int width_before,
-                                          const int height_before) {
-  int width_new = width_before * 2;
-  int height_new = height_before * 2;
+void DrawMenu(void) {
+  if (cur_entry == MAIN) {
+    DrawMenuLine(" Menu", 0);
+    DrawMenuLine(" Select Heatmap", 1);
+    DrawMenuLine(" Exit", 2);
+  }
+  else if (cur_entry == SELECT_HEATMAP) {
 
-  for (int y = 0; y < height_new; ++y) {
-    for (int x = 0; x < width_new; ++x) {
-      float temp;
-      int y_old = y / 2;
-      int x_old = x / 2;
-
-      // row even -> partially filled -> interpolate only between two neighbors
-      if (y % 2 == 0) {
-        //skips every second integer (which has a "real" pixel value)
-        if (x % 2 != 0) {
-          float left;
-          float right;
-
-          if (x == width_new - 1) {
-            left = original_image[y_old * width_before + x_old];
-            right = left;
-          } else {
-            left = original_image[y_old * width_before + x_old];
-            right = original_image[y_old * width_before + x_old + 1];
-          }
-          temp = (left + right) / 2.0f;
-        } else {
-          temp = original_image[y_old * width_before + x_old];
-        }
-      }
-      //row odd -> empty -> interpolate between the 4 surrounding cells
-      else {
-        if (x == 0) {
-          float top = original_image[y_old * width_before + x_old];
-          float bottom = top;
-          // remark: the case y == 0 is handled in the very first if and not relevant, here
-          if (y < height_new - 1) {
-            bottom = original_image[(y_old + 1) * width_before + x_old];
-          }
-          temp = (top + bottom) / 2.0f;
-        } else if (x == width_new - 1) {
-          float top = original_image[y_old * width_before + x_old];
-          float bottom = top;
-          if (y < height_new - 1) {
-            bottom = original_image[(y_old + 1) * width_before + x_old];
-          }
-          temp = (top + bottom) / 2.0f;
-        } else {
-          float left_top = original_image[y_old * width_before + x_old];
-          float right_top = original_image[y_old * width_before + x_old + 1];
-          float left_bottom = left_top;
-          float right_bottom = right_top;
-          if (y < height_new - 1) {
-            left_bottom = original_image[(y_old + 1) * width_before + x_old];
-            right_bottom = original_image[(y_old + 1) * width_before + x_old + 1];
-          }
-          temp = (left_top + right_top + left_bottom + right_bottom) / 4.0f;
-        }
-      }
-
-      ILI9341_Draw_Rectangle(x * pixel_size / 2 + offset_x, y * pixel_size / 2 + offset_y, pixel_size / 2,
-                             pixel_size / 2,
-                             TempConverter(temp));
-    }
   }
 }
-
 
 int MLX90640_ReadAndDisplay(void) {
   if (new_data_available) {
@@ -377,11 +283,7 @@ int MLX90640_ReadAndDisplay(void) {
     MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
     float Ta = MLX90640_GetTa(display_frame, &mlxParams);
     float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-    MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, image, !upscale, 0);
-
-    if (upscale) {
-      UpscaleTimesTwoAndDisplayImmediately(image, ir_width, ir_height);
-    }
+    MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, image, 0);
 
     return 1;
   }
@@ -452,33 +354,68 @@ int main(void)
   while (1) {
     did_nothing = 1;
 
+    if (show_menu && !stick_recently_updated) {
+      HAL_StatusTypeDef status = HAL_ADC_Start(&hadc1);
+      status = HAL_ADC_PollForConversion(&hadc1, 10);
+      uint16_t new_stick_y = HAL_ADC_GetValue(&hadc1);
+
+      status = HAL_ADC_Start(&hadc1);
+      status = HAL_ADC_PollForConversion(&hadc1, 10);
+      uint16_t new_stick_x = HAL_ADC_GetValue(&hadc1);
+
+      if (new_stick_y - 2048 > 500) {
+        cursor_Y = (cursor_Y + 1) % menu_records;
+        stick_recently_updated = 1;
+        if (cursor_Y == 0) {
+          cursor_Y++;
+        }
+        redraw_menu = 1;
+      }
+      else if (new_stick_y - 2048 < -500) {
+        cursor_Y = (cursor_Y - 1) % menu_records;
+        stick_recently_updated = 1;
+        if (cursor_Y == 0) {
+          cursor_Y = menu_records - 1;
+        }
+        redraw_menu = 1;
+      }
+    }
+
     uint32_t count = HAL_GetTick();
+
     if (count - frame_counter >= 1000) {
       frame_counter = count;
-      DrawFPS();
+      if (!show_menu) {
+        DrawFPS();
+      }
       did_nothing = 0;
       frames = 0;
+      stick_recently_updated = 0;
     }
 
-    if (change_record) {
-      ChangeAndDisplayRecordState();
-      change_record = 0;
-      did_nothing = 0;
+    if (redraw_record) {
+        ChangeAndDisplayRecordState();
+        redraw_record = 0;
+        did_nothing = 0;
     }
 
-    if (record) {
+    if (show_menu) {
+      if (redraw_menu) {
+        DrawMenu();
+        redraw_menu = 0;
+        did_nothing = 0;
+      }
+    }
+    else {
       if (MLX90640_ReadAndDisplay()) {
         did_nothing = 0;
       }
     }
 
+
     if (fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
       DrawHeatmp();
       did_nothing = 0;
-    }
-
-    if (show_menu) {
-
     }
 
     if (did_nothing) {
@@ -560,15 +497,16 @@ static void MX_ADC1_Init(void)
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ScanConvMode = ENABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = ENABLE;
+  hadc1.Init.NbrOfDiscConversion = 1;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.NbrOfConversion = 2;
   hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -578,7 +516,16 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_8;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_9;
+  sConfig.Rank = 2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();

@@ -479,7 +479,7 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 #define MIN_DIF_TO_REDRAW 0.5f //ToDo: make dynamic, e.g. (max - min) / 7
 int rescaled = 0;
 
-void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int display, int autoscale)
+void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int autoscale)
 {
     // 1. Pre-calculate common environmental constants
     float vdd = MLX90640_GetVdd(frameData, params);
@@ -558,23 +558,24 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
             // Final Refinement
             To = sqrtf(sqrtf(irData / (alphaComp * alphaCorrR[range] * (1.0f + params->ksTo[range] * (To - params->ct[range]))) + taTr)) - 273.15f;
 
-            To = (alpha * To) + ((1.0f - alpha) * result[pixelNumber]);
+         //   To = (alpha * To) + ((1.0f - alpha) * result[pixelNumber]);
 
             // 4. Optimized Display Check
             float diff = To - result[pixelNumber];
-            if (diff > MIN_DIF_TO_REDRAW || diff < -MIN_DIF_TO_REDRAW || rescaled) {
+            if (force_redraw > 0 || diff > MIN_DIF_TO_REDRAW || diff < -MIN_DIF_TO_REDRAW || rescaled) {
                 if (To < min) min = To;
                 if (To > max) max = To;
-
-                if (display) {
-                    ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(To));
-                }
+                ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(To));
                 result[pixelNumber] = To;
             }
         }
     }
 
     rescaled = 0;
+
+    if (force_redraw > 0) {
+        force_redraw--;
+    }
 
     // Global Min/Max update
     if (autoscale) {
