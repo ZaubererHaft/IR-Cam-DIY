@@ -8,9 +8,9 @@
 #define ir_height  24
 #define lcd_width 320
 #define lcd_height 240
-#define menu_width 100
+#define menu_width 200
 #define menu_height 80
-#define font_size 8
+#define menu_font_size 16
 
 extern volatile int force_redraw;
 

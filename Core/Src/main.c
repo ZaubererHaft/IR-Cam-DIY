@@ -102,7 +102,7 @@ int redraw_menu = 1;
 int redraw_record = 1;
 uint32_t last_stick_pressed = 0;
 uint16_t frames = 0;
-uint16_t menu_records = 5;
+uint16_t menu_records = 6;
 uint16_t cursor_Y = 1;
 int stick_recently_updated = 0;
 int redraw_heatmap = 0;
@@ -173,7 +173,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
           if (cursor_Y == 1) {
             cur_entry = SELECT_HEATMAP;
           }
-          else if (cursor_Y == 2) {
+          else if (cursor_Y == 5) {
             show_menu = 0;
             force_redraw = 2;
           }
@@ -187,6 +187,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
           }
           else if (cursor_Y == 3) {
             TempConverter = &TempToGray565_InvertedFast;
+          }
+          else if (cursor_Y == 4) {
+            TempConverter = &TempToRainbow565_Fast;
           }
           redraw_heatmap = 1;
           cur_entry = MAIN;
@@ -211,13 +214,11 @@ void DrawHeatmp(void) {
   int x = (ir_width + 1) * pixel_size + offset_x;
   int y = offset_y;
 
-  ILI9341_Draw_Text("Heatmap", x, y, WHITE, 1, BLACK);
-
-  y += pixel_size * 2;
+  y += pixel_size * 2 - 8;
 
   char buff[10] = {};
   itoa(tMin, buff, 10);
-  ILI9341_Draw_Text(buff, x + 20, y, WHITE, 1, BLACK);
+  ILI9341_Draw_Text(buff, x + 20, y, WHITE, 2, BLACK);
 
   int chunks = 30;
   float step = (tMax - tMin) / chunks;
@@ -231,11 +232,11 @@ void DrawHeatmp(void) {
   memset(buff, 0, sizeof(buff));
   float mid = (tMax + fabs(tMin)) / 2;
   itoa(mid, buff, 10);
-  ILI9341_Draw_Text(buff, x + 20, y - chunks * 4 / 2 - 4, WHITE, 1, BLACK);
+  ILI9341_Draw_Text(buff, x + 20, y - chunks * 4 / 2 - 8, WHITE, 2, BLACK);
 
   memset(buff, 0, sizeof(buff));
   itoa(tMax, buff, 10);
-  ILI9341_Draw_Text(buff, x + 20, y - 8, WHITE, 1, BLACK);
+  ILI9341_Draw_Text(buff, x + 20, y - 16, WHITE, 2, BLACK);
 }
 
 
@@ -263,11 +264,11 @@ void DrawMenuLine(const char *text, uint16_t line) {
     color_background = BLACK;
   }
 
-  uint16_t x = lcd_width / 2 - menu_width / 2;
-  uint16_t y = lcd_height / 2 - menu_height / 2 + font_size * line;
+  uint16_t x = lcd_width / 2 - menu_width / 2 - 30;
+  uint16_t y = lcd_height / 2 - menu_height / 2 + menu_font_size * line;
 
-  ILI9341_Draw_Rectangle(x, y, menu_width, font_size, color_background);
-  ILI9341_Draw_Text(text, x, y, color_foreground, 1, color_background);
+  ILI9341_Draw_Rectangle(x, y, menu_width, menu_font_size, color_background);
+  ILI9341_Draw_Text(text, x, y, color_foreground, 2, color_background);
 
 }
 
@@ -275,16 +276,18 @@ void DrawMenu(void) {
   if (cur_entry == MAIN) {
     DrawMenuLine(" Menu", 0);
     DrawMenuLine(" Select Heatmap", 1);
-    DrawMenuLine(" Exit", 2);
-    DrawMenuLine(" ", 3);
+    DrawMenuLine(" Scaling", 2);
+    DrawMenuLine(" Save Image", 3);
     DrawMenuLine(" ", 4);
+    DrawMenuLine(" Exit", 5);
   }
   else if (cur_entry == SELECT_HEATMAP) {
     DrawMenuLine(" Select Heatmap", 0);
     DrawMenuLine(" Magma", 1);
     DrawMenuLine(" Gray", 2);
     DrawMenuLine(" Gray (inv)", 3);
-    DrawMenuLine(" Exit", 4);
+    DrawMenuLine(" Rainbow", 4);
+    DrawMenuLine(" Exit", 5);
   }
 }
 
