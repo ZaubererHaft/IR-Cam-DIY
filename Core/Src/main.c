@@ -102,10 +102,10 @@ int redraw_menu = 1;
 int redraw_record = 1;
 uint32_t last_stick_pressed = 0;
 uint16_t frames = 0;
-uint16_t menu_records = 3;
+uint16_t menu_records = 5;
 uint16_t cursor_Y = 1;
 int stick_recently_updated = 0;
-
+int redraw_heatmap = 0;
 volatile int force_redraw = 0;
 /* USER CODE END PV */
 
@@ -170,13 +170,26 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (last_stick_pressed - time > 500) {
       if (show_menu) {
         if (cur_entry == MAIN) {
-          if (cursor_Y == 2) {
+          if (cursor_Y == 1) {
+            cur_entry = SELECT_HEATMAP;
+          }
+          else if (cursor_Y == 2) {
             show_menu = 0;
             force_redraw = 2;
           }
         }
         else if (cur_entry == SELECT_HEATMAP) {
-
+          if (cursor_Y == 1) {
+            TempConverter = &TempToMagma565_Fast;
+          }
+          else if (cursor_Y == 2) {
+            TempConverter = &TempToGray565;
+          }
+          else if (cursor_Y == 3) {
+            TempConverter = &TempToGray565_InvertedFast;
+          }
+          redraw_heatmap = 1;
+          cur_entry = MAIN;
         }
       }
       else {
@@ -206,11 +219,11 @@ void DrawHeatmp(void) {
   itoa(tMin, buff, 10);
   ILI9341_Draw_Text(buff, x + 20, y, WHITE, 1, BLACK);
 
-  int chunks = 20;
+  int chunks = 30;
   float step = (tMax - tMin) / chunks;
   for (int i = 0; i < chunks; ++i) {
     float val = tMin + i * step;
-    ILI9341_Draw_Rectangle(x, y, 10, 4, TempConverter(val));
+    ILI9341_Draw_Rectangle(x, y, 15, 4, TempConverter(val));
 
     y += 4;
   }
@@ -263,9 +276,15 @@ void DrawMenu(void) {
     DrawMenuLine(" Menu", 0);
     DrawMenuLine(" Select Heatmap", 1);
     DrawMenuLine(" Exit", 2);
+    DrawMenuLine(" ", 3);
+    DrawMenuLine(" ", 4);
   }
   else if (cur_entry == SELECT_HEATMAP) {
-
+    DrawMenuLine(" Select Heatmap", 0);
+    DrawMenuLine(" Magma", 1);
+    DrawMenuLine(" Gray", 2);
+    DrawMenuLine(" Gray (inv)", 3);
+    DrawMenuLine(" Exit", 4);
   }
 }
 
@@ -363,7 +382,7 @@ int main(void)
       status = HAL_ADC_PollForConversion(&hadc1, 10);
       uint16_t new_stick_x = HAL_ADC_GetValue(&hadc1);
 
-      if (new_stick_y - 2048 > 500) {
+      if (new_stick_y - 2048 > 1500) {
         cursor_Y = (cursor_Y + 1) % menu_records;
         stick_recently_updated = 1;
         if (cursor_Y == 0) {
@@ -371,7 +390,7 @@ int main(void)
         }
         redraw_menu = 1;
       }
-      else if (new_stick_y - 2048 < -500) {
+      else if (new_stick_y - 2048 < -1500) {
         cursor_Y = (cursor_Y - 1) % menu_records;
         stick_recently_updated = 1;
         if (cursor_Y == 0) {
@@ -413,9 +432,10 @@ int main(void)
     }
 
 
-    if (fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
+    if (redraw_heatmap || fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
       DrawHeatmp();
       did_nothing = 0;
+      redraw_heatmap = 0;
     }
 
     if (did_nothing) {
