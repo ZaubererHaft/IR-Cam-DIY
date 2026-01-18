@@ -81,10 +81,10 @@ void Error_Handler(void);
 #define STICK_Z_Pin GPIO_PIN_2
 #define STICK_Z_GPIO_Port GPIOB
 #define STICK_Z_EXTI_IRQn EXTI2_IRQn
-#define SCL_Pin GPIO_PIN_10
-#define SCL_GPIO_Port GPIOB
-#define SDA_Pin GPIO_PIN_3
-#define SDA_GPIO_Port GPIOB
+#define SCL_Pin GPIO_PIN_8
+#define SCL_GPIO_Port GPIOA
+#define SCK_Pin GPIO_PIN_4
+#define SCK_GPIO_Port GPIOB
 #define BL_Pin GPIO_PIN_5
 #define BL_GPIO_Port GPIOB
 

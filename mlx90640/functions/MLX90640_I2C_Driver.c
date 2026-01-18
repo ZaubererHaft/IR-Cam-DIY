@@ -18,7 +18,7 @@
 #include "main.h"
 #include "MLX90640_I2C_Driver.h"
 
-extern I2C_HandleTypeDef hi2c2;
+extern I2C_HandleTypeDef hi2c3;
 
 
 void MLX90640_I2CInit() {
@@ -28,7 +28,7 @@ void MLX90640_I2CInit() {
 int MLX90640_I2CReadAsync(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddressRead, uint16_t *data) {
     uint16_t sizeInBytes = nMemAddressRead * 2;
 
-    if (HAL_I2C_Mem_Read_DMA(&hi2c2, (slaveAddr << 1), startAddress, I2C_MEMADD_SIZE_16BIT, (uint8_t*)data, sizeInBytes) != HAL_OK) {
+    if (HAL_I2C_Mem_Read_DMA(&hi2c3, (slaveAddr << 1), startAddress, I2C_MEMADD_SIZE_16BIT, (uint8_t*)data, sizeInBytes) != HAL_OK) {
         return -1;
     }
 
@@ -42,7 +42,7 @@ int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddr
     int ack = 0;
     int cnt = 0;
 
-    ack = HAL_I2C_Mem_Read(&hi2c2, (slaveAddr << 1), startAddress, I2C_MEMADD_SIZE_16BIT, bp, nMemAddressRead * 2, 500);
+    ack = HAL_I2C_Mem_Read(&hi2c3, (slaveAddr << 1), startAddress, I2C_MEMADD_SIZE_16BIT, bp, nMemAddressRead * 2, 500);
 
     if (ack != HAL_OK) {
         return -1;
@@ -68,7 +68,7 @@ int MLX90640_I2CWrite(uint8_t slaveAddr, uint16_t writeAddress, uint16_t data) {
     cmd[0] = data >> 8;
     cmd[1] = data & 0x00FF;
 
-    ack = HAL_I2C_Mem_Write(&hi2c2, sa, writeAddress, I2C_MEMADD_SIZE_16BIT, cmd, sizeof(cmd), 500);
+    ack = HAL_I2C_Mem_Write(&hi2c3, sa, writeAddress, I2C_MEMADD_SIZE_16BIT, cmd, sizeof(cmd), 500);
 
     if (ack != HAL_OK) {
         return -1;
