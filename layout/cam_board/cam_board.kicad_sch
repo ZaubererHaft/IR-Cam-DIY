@@ -1145,7 +1145,7 @@
 						(type none)
 					)
 				)
-				(pin passive line
+				(pin power_out line
 					(at 5.08 5.08 180)
 					(length 3.81)
 					(name "Pin_1"
@@ -1163,7 +1163,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin power_out line
 					(at 5.08 2.54 180)
 					(length 3.81)
 					(name "Pin_2"
@@ -1199,7 +1199,7 @@
 						)
 					)
 				)
-				(pin power_out line
+				(pin passive line
 					(at 5.08 -2.54 180)
 					(length 3.81)
 					(name "Pin_4"
@@ -1235,7 +1235,7 @@
 						)
 					)
 				)
-				(pin power_out line
+				(pin passive line
 					(at 5.08 -7.62 180)
 					(length 3.81)
 					(name "Pin_6"
