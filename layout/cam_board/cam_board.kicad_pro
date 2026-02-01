@@ -58,7 +58,16 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        [
+          "silk_edge_clearance|128000000|63900000|918874d7-c108-4c76-8315-5fcc9d75f5d6|89f23b01-2687-4e4f-8773-ad2c44a2b76a",
+          "USB connector must just out of the board"
+        ],
+        [
+          "silk_edge_clearance|128000000|73300000|918874d7-c108-4c76-8315-5fcc9d75f5d6|03fa6032-0ea1-443e-98b5-a92f94615a12",
+          "USB connector must jut out of the board"
+        ]
+      ],
       "meta": {
         "version": 2
       },
