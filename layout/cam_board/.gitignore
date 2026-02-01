@@ -1,0 +1,12 @@
+cam_board-backups
+*.csv
+*.prl
+*.png
+*.zip
+*.gbr
+*.gbrjob
+*.drl
+*cache
+*.lck
+*.kicad_prl
+*.pdf
