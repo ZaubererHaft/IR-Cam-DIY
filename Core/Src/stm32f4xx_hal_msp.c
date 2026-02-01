@@ -99,11 +99,18 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     /* Peripheral clock enable */
     __HAL_RCC_ADC1_CLK_ENABLE();
 
+    __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
     /**ADC1 GPIO Configuration
+    PA6     ------> ADC1_IN6
     PB0     ------> ADC1_IN8
     PB1     ------> ADC1_IN9
     */
+    GPIO_InitStruct.Pin = BATTLVL_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(BATTLVL_GPIO_Port, &GPIO_InitStruct);
+
     GPIO_InitStruct.Pin = STICK_X_Pin|STICK_Y_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -134,9 +141,12 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     __HAL_RCC_ADC1_CLK_DISABLE();
 
     /**ADC1 GPIO Configuration
+    PA6     ------> ADC1_IN6
     PB0     ------> ADC1_IN8
     PB1     ------> ADC1_IN9
     */
+    HAL_GPIO_DeInit(BATTLVL_GPIO_Port, BATTLVL_Pin);
+
     HAL_GPIO_DeInit(GPIOB, STICK_X_Pin|STICK_Y_Pin);
 
     /* USER CODE BEGIN ADC1_MspDeInit 1 */
@@ -155,7 +165,31 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
 void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  if(hi2c->Instance==I2C3)
+  if(hi2c->Instance==I2C1)
+  {
+    /* USER CODE BEGIN I2C1_MspInit 0 */
+
+    /* USER CODE END I2C1_MspInit 0 */
+
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    /**I2C1 GPIO Configuration
+    PB6     ------> I2C1_SCL
+    PB7     ------> I2C1_SDA
+    */
+    GPIO_InitStruct.Pin = EEPROM_SCL_Pin|EEPROM_SDA_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    /* Peripheral clock enable */
+    __HAL_RCC_I2C1_CLK_ENABLE();
+    /* USER CODE BEGIN I2C1_MspInit 1 */
+
+    /* USER CODE END I2C1_MspInit 1 */
+  }
+  else if(hi2c->Instance==I2C3)
   {
     /* USER CODE BEGIN I2C3_MspInit 0 */
 
@@ -206,7 +240,6 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
     /* USER CODE BEGIN I2C3_MspInit 1 */
 
     /* USER CODE END I2C3_MspInit 1 */
-
   }
 
 }
@@ -219,7 +252,27 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
   */
 void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
 {
-  if(hi2c->Instance==I2C3)
+  if(hi2c->Instance==I2C1)
+  {
+    /* USER CODE BEGIN I2C1_MspDeInit 0 */
+
+    /* USER CODE END I2C1_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_I2C1_CLK_DISABLE();
+
+    /**I2C1 GPIO Configuration
+    PB6     ------> I2C1_SCL
+    PB7     ------> I2C1_SDA
+    */
+    HAL_GPIO_DeInit(EEPROM_SCL_GPIO_Port, EEPROM_SCL_Pin);
+
+    HAL_GPIO_DeInit(EEPROM_SDA_GPIO_Port, EEPROM_SDA_Pin);
+
+    /* USER CODE BEGIN I2C1_MspDeInit 1 */
+
+    /* USER CODE END I2C1_MspDeInit 1 */
+  }
+  else if(hi2c->Instance==I2C3)
   {
     /* USER CODE BEGIN I2C3_MspDeInit 0 */
 
@@ -345,16 +398,16 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
   */
 void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
 {
-  if(htim_pwm->Instance==TIM3)
+  if(htim_pwm->Instance==TIM2)
   {
-    /* USER CODE BEGIN TIM3_MspInit 0 */
+    /* USER CODE BEGIN TIM2_MspInit 0 */
 
-    /* USER CODE END TIM3_MspInit 0 */
+    /* USER CODE END TIM2_MspInit 0 */
     /* Peripheral clock enable */
-    __HAL_RCC_TIM3_CLK_ENABLE();
-    /* USER CODE BEGIN TIM3_MspInit 1 */
+    __HAL_RCC_TIM2_CLK_ENABLE();
+    /* USER CODE BEGIN TIM2_MspInit 1 */
 
-    /* USER CODE END TIM3_MspInit 1 */
+    /* USER CODE END TIM2_MspInit 1 */
 
   }
 
@@ -363,26 +416,26 @@ void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  if(htim->Instance==TIM3)
+  if(htim->Instance==TIM2)
   {
-    /* USER CODE BEGIN TIM3_MspPostInit 0 */
+    /* USER CODE BEGIN TIM2_MspPostInit 0 */
 
-    /* USER CODE END TIM3_MspPostInit 0 */
+    /* USER CODE END TIM2_MspPostInit 0 */
 
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    /**TIM3 GPIO Configuration
-    PB5     ------> TIM3_CH2
+    /**TIM2 GPIO Configuration
+    PB10     ------> TIM2_CH3
     */
     GPIO_InitStruct.Pin = BL_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
+    GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
     HAL_GPIO_Init(BL_GPIO_Port, &GPIO_InitStruct);
 
-    /* USER CODE BEGIN TIM3_MspPostInit 1 */
+    /* USER CODE BEGIN TIM2_MspPostInit 1 */
 
-    /* USER CODE END TIM3_MspPostInit 1 */
+    /* USER CODE END TIM2_MspPostInit 1 */
   }
 
 }
@@ -394,16 +447,16 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
   */
 void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* htim_pwm)
 {
-  if(htim_pwm->Instance==TIM3)
+  if(htim_pwm->Instance==TIM2)
   {
-    /* USER CODE BEGIN TIM3_MspDeInit 0 */
+    /* USER CODE BEGIN TIM2_MspDeInit 0 */
 
-    /* USER CODE END TIM3_MspDeInit 0 */
+    /* USER CODE END TIM2_MspDeInit 0 */
     /* Peripheral clock disable */
-    __HAL_RCC_TIM3_CLK_DISABLE();
-    /* USER CODE BEGIN TIM3_MspDeInit 1 */
+    __HAL_RCC_TIM2_CLK_DISABLE();
+    /* USER CODE BEGIN TIM2_MspDeInit 1 */
 
-    /* USER CODE END TIM3_MspDeInit 1 */
+    /* USER CODE END TIM2_MspDeInit 1 */
   }
 
 }

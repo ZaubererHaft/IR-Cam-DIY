@@ -59,11 +59,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define USER_LED_Pin GPIO_PIN_13
-#define USER_LED_GPIO_Port GPIOC
-#define USER_BUTTON_Pin GPIO_PIN_0
-#define USER_BUTTON_GPIO_Port GPIOA
-#define USER_BUTTON_EXTI_IRQn EXTI0_IRQn
+#define USER_LED_Pin GPIO_PIN_1
+#define USER_LED_GPIO_Port GPIOA
 #define RST_Pin GPIO_PIN_2
 #define RST_GPIO_Port GPIOA
 #define DC_Pin GPIO_PIN_3
@@ -72,6 +69,8 @@ void Error_Handler(void);
 #define CS_GPIO_Port GPIOA
 #define CLK_Pin GPIO_PIN_5
 #define CLK_GPIO_Port GPIOA
+#define BATTLVL_Pin GPIO_PIN_6
+#define BATTLVL_GPIO_Port GPIOA
 #define DIN_Pin GPIO_PIN_7
 #define DIN_GPIO_Port GPIOA
 #define STICK_X_Pin GPIO_PIN_0
@@ -81,12 +80,28 @@ void Error_Handler(void);
 #define STICK_Z_Pin GPIO_PIN_2
 #define STICK_Z_GPIO_Port GPIOB
 #define STICK_Z_EXTI_IRQn EXTI2_IRQn
+#define BL_Pin GPIO_PIN_10
+#define BL_GPIO_Port GPIOB
+#define BATTFULL_Pin GPIO_PIN_13
+#define BATTFULL_GPIO_Port GPIOB
+#define BATTCHARGING_Pin GPIO_PIN_14
+#define BATTCHARGING_GPIO_Port GPIOB
+#define EXT_POWER_Pin GPIO_PIN_15
+#define EXT_POWER_GPIO_Port GPIOB
 #define SCL_Pin GPIO_PIN_8
 #define SCL_GPIO_Port GPIOA
+#define BATTCHARGE_Pin GPIO_PIN_9
+#define BATTCHARGE_GPIO_Port GPIOA
 #define SDA_Pin GPIO_PIN_4
 #define SDA_GPIO_Port GPIOB
-#define BL_Pin GPIO_PIN_5
-#define BL_GPIO_Port GPIOB
+#define EEPROM_NWC_Pin GPIO_PIN_5
+#define EEPROM_NWC_GPIO_Port GPIOB
+#define EEPROM_SCL_Pin GPIO_PIN_6
+#define EEPROM_SCL_GPIO_Port GPIOB
+#define EEPROM_SDA_Pin GPIO_PIN_7
+#define EEPROM_SDA_GPIO_Port GPIOB
+#define USRBUTTON_Pin GPIO_PIN_9
+#define USRBUTTON_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
