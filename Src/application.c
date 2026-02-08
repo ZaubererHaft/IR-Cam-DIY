@@ -1,5 +1,3 @@
-#include <math.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "ILI9341_DMA_driver.h"
@@ -108,15 +106,17 @@ void application_main(void) {
   }
 
   while (1) {
-    UserInterface_Draw();
-
     if (!UserInterface_ShowMenu()) {
       MLX90640_ReadAndDisplay();
     }
 
+    UserInterface_Draw();
+
     if (UserInterface_NeedsIRImageRedraw()) {
       redraw_ir_image();
+      UserInterface_IRImageRedrawn();
     }
+
 
     /* USER CODE END WHILE */
 

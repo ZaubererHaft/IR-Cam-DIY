@@ -33,6 +33,12 @@ float tMax = 37.0f;
 
 uint16_t (*TempConverter)(float) = &TempToMagma565_Fast;
 
+static uint32_t frame_counter = 0;
+
+static int32_t redraw_record_state = 1;
+static int32_t menu_redraw = 0;
+static int32_t redraw_heatmap = 0;
+
 extern ADC_HandleTypeDef hadc1;
 
 void UserInterface_Init(void) {
@@ -64,79 +70,96 @@ void DrawMenuLine(const char *text, uint16_t line) {
 
 
 void DrawRecordState(void) {
-  ILI9341_Draw_Rectangle(lcd_width - pixel_size * 4, 0, pixel_size * 4, pixel_size * 2 + 4, BLACK);
+  if (redraw_record_state) {
+    ILI9341_Draw_Rectangle(lcd_width - pixel_size * 4, 0, pixel_size * 4, pixel_size * 2 + 4, BLACK);
 
-  if (menu_show) {
-    ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2, 0, 4, pixel_size * 2, LIGHTGREY);
-    ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2 + 6, 0, 4, pixel_size * 2, LIGHTGREY);
-  } else {
-    ILI9341_Draw_Filled_Circle(lcd_width - pixel_size * 2 + 4, pixel_size, pixel_size, RED);
+    if (menu_show) {
+      ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2, 0, 4, pixel_size * 2, LIGHTGREY);
+      ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2 + 6, 0, 4, pixel_size * 2, LIGHTGREY);
+    } else {
+      ILI9341_Draw_Filled_Circle(lcd_width - pixel_size * 2 + 4, pixel_size, pixel_size, RED);
+    }
+
+    redraw_record_state = 0;
   }
 }
 
 
 void DrawMenu(void) {
-  if (menu_cur_entry == MAIN) {
-    DrawMenuLine(" Menu", 0);
-    DrawMenuLine(" Heatmap", 1);
-    DrawMenuLine(" Scaling", 2);
-    DrawMenuLine(" Save Image", 3);
-    DrawMenuLine(" Settings", 4);
-    DrawMenuLine(" Exit", 5);
-  } else if (menu_cur_entry == SELECT_HEATMAP) {
-    DrawMenuLine(" Select Heatmap", 0);
-    DrawMenuLine(" Magma", 1);
-    DrawMenuLine(" Gray", 2);
-    DrawMenuLine(" Gray (inv)", 3);
-    DrawMenuLine(" Rainbow", 4);
-    DrawMenuLine(" Exit", 5);
+  if (menu_redraw) {
+    if (menu_cur_entry == MAIN) {
+      DrawMenuLine(" Menu", 0);
+      DrawMenuLine(" Heatmap", 1);
+      DrawMenuLine(" Scaling", 2);
+      DrawMenuLine(" Save Image", 3);
+      DrawMenuLine(" Settings", 4);
+      DrawMenuLine(" Exit", 5);
+    } else if (menu_cur_entry == SELECT_HEATMAP) {
+      DrawMenuLine(" Select Heatmap", 0);
+      DrawMenuLine(" Magma", 1);
+      DrawMenuLine(" Gray", 2);
+      DrawMenuLine(" Gray (inv)", 3);
+      DrawMenuLine(" Rainbow", 4);
+      DrawMenuLine(" Exit", 5);
+    }
+    menu_redraw = 0;
   }
 }
 
 void DrawHeatmp(void) {
-  tMinOld = tMin;
-  tMaxOld = tMax;
+  if (redraw_heatmap || fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
+    tMinOld = tMin;
+    tMaxOld = tMax;
 
-  int x = (ir_width + 1) * pixel_size + offset_x;
-  int y = offset_y;
+    int x = (ir_width + 1) * pixel_size + offset_x;
+    int y = offset_y;
 
-  y += pixel_size * 2 - 8;
+    y += pixel_size * 2 - 8;
 
-  char buff[10] = {};
-  itoa(tMin, buff, 10);
-  ILI9341_Draw_Text(buff, x + 20, y, WHITE, 2, BLACK);
+    char buff[10] = {};
+    itoa(tMin, buff, 10);
+    ILI9341_Draw_Text(buff, x + 20, y, WHITE, 2, BLACK);
 
-  int chunks = 30;
-  float step = (tMax - tMin) / chunks;
-  for (int i = 0; i < chunks; ++i) {
-    float val = tMin + i * step;
-    ILI9341_Draw_Rectangle(x, y, 15, 4, TempConverter(val));
+    int chunks = 30;
+    float step = (tMax - tMin) / chunks;
+    for (int i = 0; i < chunks; ++i) {
+      float val = tMin + i * step;
+      ILI9341_Draw_Rectangle(x, y, 15, 4, TempConverter(val));
 
-    y += 4;
+      y += 4;
+    }
+
+    memset(buff, 0, sizeof(buff));
+    float mid = (tMax + fabs(tMin)) / 2;
+    itoa(mid, buff, 10);
+    ILI9341_Draw_Text(buff, x + 20, y - chunks * 4 / 2 - 8, WHITE, 2, BLACK);
+
+    memset(buff, 0, sizeof(buff));
+    itoa(tMax, buff, 10);
+    ILI9341_Draw_Text(buff, x + 20, y - 16, WHITE, 2, BLACK);
+
+    redraw_heatmap = 0;
   }
-
-  memset(buff, 0, sizeof(buff));
-  float mid = (tMax + fabs(tMin)) / 2;
-  itoa(mid, buff, 10);
-  ILI9341_Draw_Text(buff, x + 20, y - chunks * 4 / 2 - 8, WHITE, 2, BLACK);
-
-  memset(buff, 0, sizeof(buff));
-  itoa(tMax, buff, 10);
-  ILI9341_Draw_Text(buff, x + 20, y - 16, WHITE, 2, BLACK);
 }
 
 
 void DrawFPS(void) {
-  int x = (ir_width + 1) * pixel_size + offset_x;
-  int y = lcd_height - 15;
+  uint32_t count = HAL_GetTick();
 
-  char buff[15] = "FPS:    ";
-  ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
+  if (count - frame_counter >= 1000) {
+    int x = (ir_width + 1) * pixel_size + offset_x;
+    int y = lcd_height - 15;
 
-  itoa((int) frames, &buff[5], 10);
-  ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
+    char buff[15] = "FPS:    ";
+    ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
+
+    itoa((int) frames, &buff[5], 10);
+    ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
+
+    frame_counter = count;
+    frames = 0;
+  }
 }
-
 
 int32_t UserInterface_ShowMenu(void) {
   return menu_show;
@@ -144,6 +167,10 @@ int32_t UserInterface_ShowMenu(void) {
 
 int32_t UserInterface_NeedsIRImageRedraw() {
   return do_redraw_ir_image;
+}
+
+void UserInterface_IRImageRedrawn(void) {
+  do_redraw_ir_image = 0;
 }
 
 void UserInterface_ReadStick() {
@@ -160,11 +187,13 @@ void UserInterface_ReadStick() {
     if (menu_cursor_Y == 0) {
       menu_cursor_Y++;
     }
+    menu_redraw = 1;
   } else if (new_stick_x - 2048 < -1500) {
     menu_cursor_Y = (menu_cursor_Y - 1) % menu_records;
     if (menu_cursor_Y == 0) {
       menu_cursor_Y = menu_records - 1;
     }
+    menu_redraw = 1;
   }
 }
 
@@ -173,9 +202,13 @@ void UserInterface_Draw(void) {
   DrawRecordState();
   DrawHeatmp();
 
+
   if (menu_show) {
     UserInterface_ReadStick();
     DrawMenu();
+  }
+  else {
+    frames++;
   }
 }
 
@@ -204,6 +237,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             TempConverter = &TempToRainbow565_Fast;
           }
 
+          redraw_heatmap = 1;
           menu_cursor_Y = 1;
           do_redraw_ir_image = 1;
           menu_cur_entry = MAIN;
@@ -213,7 +247,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         menu_show = 1;
       }
 
+      menu_redraw = 1;
       last_stick_pressed = time;
     }
+
+    redraw_record_state = 1;
   }
 }
