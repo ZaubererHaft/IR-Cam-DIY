@@ -1,4 +1,4 @@
-#include "heatmap.h"
+#include "../Inc/heatmap.h"
 
 #define RGB565(r, g, b) \
 (((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F))

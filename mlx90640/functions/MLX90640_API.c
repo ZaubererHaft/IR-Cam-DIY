@@ -19,7 +19,7 @@
 #include <MLX90640_API.h>
 #include <math.h>
 
-#include "ui_constants.h"
+#include "../../Inc/ui_constants.h"
 #include "heatmap.h"
 #include "ILI9341_DMA_driver.h"
 
