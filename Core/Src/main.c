@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2025 STMicroelectronics.
+  * Copyright (c) 2026 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -19,10 +19,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-#include "application.h"
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "application.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,6 +31,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -52,6 +52,7 @@ DMA_HandleTypeDef hdma_spi1_tx;
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -69,6 +70,7 @@ static void MX_I2C1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
 /* USER CODE END 0 */
 
 /**
@@ -112,7 +114,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1) {
+  while (1)
+  {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -477,7 +480,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-
 /* USER CODE END 4 */
 
 /**
@@ -489,7 +491,8 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1) {
+  while (1)
+  {
   }
   /* USER CODE END Error_Handler_Debug */
 }
