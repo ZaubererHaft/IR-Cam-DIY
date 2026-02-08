@@ -12,6 +12,4 @@
 #define menu_height 80
 #define menu_font_size 16
 
-extern volatile int force_redraw;
-
 #endif //CAM_UI_CONSTANTS_H

@@ -8087,6 +8087,12 @@
 		(uuid "794872a1-14b7-4722-ae68-a0df0e81080f")
 	)
 	(junction
+		(at 113.03 177.8)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "7fb01bf8-86ea-449f-865b-a9089d2b31bd")
+	)
+	(junction
 		(at 74.93 30.48)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -9082,7 +9088,7 @@
 	)
 	(wire
 		(pts
-			(xy 120.65 177.8) (xy 123.19 177.8)
+			(xy 109.22 177.8) (xy 113.03 177.8)
 		)
 		(stroke
 			(width 0)
@@ -9469,6 +9475,16 @@
 			(type default)
 		)
 		(uuid "5930aed3-f53a-4ec3-946b-06449a8d8569")
+	)
+	(wire
+		(pts
+			(xy 113.03 176.53) (xy 113.03 177.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "59747c2f-305b-4269-bf47-31e6f94ac9d5")
 	)
 	(wire
 		(pts
@@ -11092,6 +11108,16 @@
 	)
 	(wire
 		(pts
+			(xy 113.03 167.64) (xy 113.03 168.91)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c8e8e196-17f5-447c-a813-86a54c37ce5b")
+	)
+	(wire
+		(pts
 			(xy 243.84 74.93) (xy 250.19 74.93)
 		)
 		(stroke
@@ -11219,6 +11245,16 @@
 			(type default)
 		)
 		(uuid "d16d1a1f-f5b8-4df7-8bf7-1b947b610bcd")
+	)
+	(wire
+		(pts
+			(xy 113.03 177.8) (xy 123.19 177.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d2f43d02-54b4-4470-a156-2c20b15d2306")
 	)
 	(wire
 		(pts
@@ -12632,7 +12668,7 @@
 	)
 	(global_label "STICK_X"
 		(shape input)
-		(at 120.65 177.8 180)
+		(at 109.22 177.8 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -12642,7 +12678,7 @@
 		)
 		(uuid "b14030b1-3865-4dab-924a-5d0bacf6641e")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 110.1658 177.8 0)
+			(at 98.7358 177.8 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13781,6 +13817,71 @@
 			(project "cam_board"
 				(path "/eee23683-93c4-45fa-9c00-e358d0d25f58"
 					(reference "#PWR054")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3V3")
+		(at 113.03 167.64 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "11e04663-e972-49f8-aa10-b82523cbf071")
+		(property "Reference" "#PWR02"
+			(at 113.03 171.45 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3V3"
+			(at 113.03 164.084 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 113.03 167.64 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 113.03 167.64 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 113.03 167.64 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "82d13a1f-ac12-4cbb-9262-f665bc3fdd8a")
+		)
+		(instances
+			(project "cam_board"
+				(path "/eee23683-93c4-45fa-9c00-e358d0d25f58"
+					(reference "#PWR02")
 					(unit 1)
 				)
 			)
@@ -15004,7 +15105,7 @@
 			)
 		)
 		(property "Value" "Stick conn"
-			(at 122.174 171.45 0)
+			(at 125.984 171.958 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -15825,6 +15926,75 @@
 			(project "cam_board"
 				(path "/eee23683-93c4-45fa-9c00-e358d0d25f58"
 					(reference "C17")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 113.03 172.72 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "54ecdeb5-09dd-49ae-a982-4e9b891ae421")
+		(property "Reference" "R25"
+			(at 115.316 173.99 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "1k"
+			(at 113.03 174.244 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder"
+			(at 111.252 172.72 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 113.03 172.72 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 113.03 172.72 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "30b9a834-f51a-4431-8d7a-aaa3d0c322d0")
+		)
+		(pin "1"
+			(uuid "71cc40fc-7655-4dfa-9b2b-1dbd2840431a")
+		)
+		(instances
+			(project "cam_board"
+				(path "/eee23683-93c4-45fa-9c00-e358d0d25f58"
+					(reference "R25")
 					(unit 1)
 				)
 			)
@@ -20160,7 +20330,7 @@
 			)
 		)
 		(property "Value" "+3V3"
-			(at 115.57 173.482 0)
+			(at 119.38 171.704 0)
 			(effects
 				(font
 					(size 1.27 1.27)

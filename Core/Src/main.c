@@ -91,6 +91,7 @@ static int mlx_status;
 
 volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
 volatile uint8_t show_menu = 0;
+volatile uint8_t do_redraw = 0;
 
 uint16_t (*TempConverter)(float) = &TempToMagma565_Fast;
 
@@ -107,7 +108,6 @@ uint16_t menu_records = 6;
 uint16_t cursor_Y = 1;
 int stick_recently_updated = 0;
 int redraw_heatmap = 0;
-volatile int force_redraw = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -153,6 +153,15 @@ void MLX90640_Init(void) {
   }
 }
 
+void redraw() {
+    for(int pixelNumber = 0; pixelNumber < 768; pixelNumber++) {
+      int row = pixelNumber >> 5;       // pixelNumber / 32
+      int col = pixelNumber & 31;       // pixelNumber % 32
+
+      ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(image[pixelNumber]));
+    }
+}
+
 void ChangeAndDisplayRecordState(void) {
   ILI9341_Draw_Rectangle(lcd_width - pixel_size * 4, 0, pixel_size * 4, pixel_size * 2 + 4, BLACK);
 
@@ -169,7 +178,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
     uint32_t time = HAL_GetTick();
 
-    if (last_stick_pressed - time > 500) {
+    if (time - last_stick_pressed > 100) {
       if (show_menu) {
         if (cur_entry == MAIN) {
           if (cursor_Y == 1) {
@@ -177,7 +186,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
           }
           else if (cursor_Y == 5) {
             show_menu = 0;
-            force_redraw = 2;
+            do_redraw = 1;
           }
         }
         else if (cur_entry == SELECT_HEATMAP) {
@@ -193,7 +202,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
           else if (cursor_Y == 4) {
             TempConverter = &TempToRainbow565_Fast;
           }
+
+          cursor_Y = 1;
           redraw_heatmap = 1;
+          do_redraw = 1;
           cur_entry = MAIN;
         }
       }
@@ -416,6 +428,11 @@ int main(void)
       did_nothing = 0;
       frames = 0;
       stick_recently_updated = 0;
+    }
+
+    if (do_redraw) {
+      redraw();
+      do_redraw = 0;
     }
 
     if (redraw_record) {

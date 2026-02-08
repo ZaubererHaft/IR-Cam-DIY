@@ -562,7 +562,7 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
 
             // 4. Optimized Display Check
             float diff = To - result[pixelNumber];
-            if (force_redraw > 0 || diff > MIN_DIF_TO_REDRAW || diff < -MIN_DIF_TO_REDRAW || rescaled) {
+            if (diff > MIN_DIF_TO_REDRAW || diff < -MIN_DIF_TO_REDRAW || rescaled) {
                 if (To < min) min = To;
                 if (To > max) max = To;
                 ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(To));
@@ -572,10 +572,6 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
     }
 
     rescaled = 0;
-
-    if (force_redraw > 0) {
-        force_redraw--;
-    }
 
     // Global Min/Max update
     if (autoscale) {
