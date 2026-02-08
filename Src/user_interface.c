@@ -188,7 +188,7 @@ void UserInterface_ReadStick() {
       menu_cursor_Y++;
     }
     menu_redraw = 1;
-  } else if (new_stick_x - 2048 < -1500) {
+  } else if (new_stick_y - 2048 < -1500) {
     menu_cursor_Y = (menu_cursor_Y - 1) % menu_records;
     if (menu_cursor_Y == 0) {
       menu_cursor_Y = menu_records - 1;
@@ -239,7 +239,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
           redraw_heatmap = 1;
           menu_cursor_Y = 1;
-          do_redraw_ir_image = 1;
           menu_cur_entry = MAIN;
         }
       } else {
