@@ -32,7 +32,8 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 enable_language(C ASM)
 
 # Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME})
+add_executable(${CMAKE_PROJECT_NAME}
+        Src/application.c)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
@@ -70,6 +71,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         LCD_2/fonts
         LCD_2/bitmaps
         Src
+        Inc
 )
 
 # Add project symbols (macros)
