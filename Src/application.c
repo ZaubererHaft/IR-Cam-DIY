@@ -8,6 +8,8 @@
 #include "heatmap.h"
 #include "application.h"
 
+#include "usbd_core.h"
+#include "usbd_msc.h"
 #include "user_interface.h"
 
 #define  FPS2HZ   0x02
@@ -37,9 +39,7 @@ static int mlx_status;
 
 volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
 
-extern ADC_HandleTypeDef hadc1;
 extern I2C_HandleTypeDef hi2c3;
-
 
 void MLX90640_Init(void) {
   mlx_status |= MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
@@ -97,18 +97,19 @@ void redraw_ir_image() {
 }
 
 void application_main(void) {
-  MLX90640_Init();
-  UserInterface_Init();
+  //MLX90640_Init();
+  //UserInterface_Init();
+//
+  //int status = MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
+  //if (status != 0) {
+  //  Error_Handler();
+  //}
 
-  int status = MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
-  if (status != 0) {
-    Error_Handler();
-  }
 
   while (1) {
-    if (!UserInterface_ShowMenu()) {
-      MLX90640_ReadAndDisplay();
-    }
+   // if (!UserInterface_ShowMenu()) {
+   //   MLX90640_ReadAndDisplay();
+   // }
 
     UserInterface_Draw();
 
@@ -116,11 +117,6 @@ void application_main(void) {
       redraw_ir_image();
       UserInterface_IRImageRedrawn();
     }
-
-
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
   }
 }
 

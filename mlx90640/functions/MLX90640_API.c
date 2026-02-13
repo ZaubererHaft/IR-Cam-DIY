@@ -116,8 +116,7 @@ int MLX90640_TriggerMeasurement(uint8_t slaveAddr)
     return MLX90640_NO_ERROR;
 }
 
-extern volatile int new_data_available;
-    uint16_t g_statusRegister;
+static uint16_t statusRegister;
 
 
 int MLX90640_CompleteFrameDataAsync(uint8_t slaveAddr, uint16_t *frameData) {
@@ -141,7 +140,7 @@ int MLX90640_CompleteFrameDataAsync(uint8_t slaveAddr, uint16_t *frameData) {
     error = MLX90640_I2CRead(slaveAddr, MLX90640_CTRL_REG, 1, &controlRegister1);
     frameData[832] = controlRegister1;
     //frameData[833] = statusRegister & 0x0001;
-    frameData[833] = MLX90640_GET_FRAME(g_statusRegister);
+    frameData[833] = MLX90640_GET_FRAME(statusRegister);
 
     if(error != MLX90640_NO_ERROR)
     {
@@ -173,13 +172,13 @@ int MLX90640_GetFrameDataAsync(uint8_t slaveAddr, uint16_t *frameData) {
 
     while(dataReady == 0)
     {
-        error = MLX90640_I2CRead(slaveAddr, MLX90640_STATUS_REG, 1, &g_statusRegister);
+        error = MLX90640_I2CRead(slaveAddr, MLX90640_STATUS_REG, 1, &statusRegister);
         if(error != MLX90640_NO_ERROR)
         {
             return error;
         }
         //dataReady = statusRegister & 0x0008;
-        dataReady = MLX90640_GET_DATA_READY(g_statusRegister);
+        dataReady = MLX90640_GET_DATA_READY(statusRegister);
     }
 
     error = MLX90640_I2CWrite(slaveAddr, MLX90640_STATUS_REG, MLX90640_INIT_STATUS_VALUE);
