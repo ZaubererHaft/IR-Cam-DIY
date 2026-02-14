@@ -7299,16 +7299,6 @@
 		)
 		(uuid "54fd3413-2fd3-44fc-84bb-8252cf1fc9eb")
 	)
-	(text "ToDo: Datenblatt checken, Widerstände checken. \nAusgangsspannung mit LDO prüfen (wie viel droput).\nThermal management beachten, CE check"
-		(exclude_from_sim no)
-		(at 319.278 64.516 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-		)
-		(uuid "57ded2a4-1b9f-4a66-8b66-3b60cc758e22")
-	)
 	(text "Battery Managmenet"
 		(exclude_from_sim no)
 		(at 188.468 16.764 0)
