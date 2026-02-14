@@ -88,18 +88,12 @@ void Error_Handler(void);
 #define BATTCHARGING_GPIO_Port GPIOB
 #define EXT_POWER_Pin GPIO_PIN_15
 #define EXT_POWER_GPIO_Port GPIOB
-#define SCL_Pin GPIO_PIN_8
-#define SCL_GPIO_Port GPIOA
 #define BATTCHARGE_Pin GPIO_PIN_9
 #define BATTCHARGE_GPIO_Port GPIOA
-#define SDA_Pin GPIO_PIN_4
+#define SCL_Pin GPIO_PIN_6
+#define SCL_GPIO_Port GPIOB
+#define SDA_Pin GPIO_PIN_7
 #define SDA_GPIO_Port GPIOB
-#define EEPROM_NWC_Pin GPIO_PIN_5
-#define EEPROM_NWC_GPIO_Port GPIOB
-#define EEPROM_SCL_Pin GPIO_PIN_6
-#define EEPROM_SCL_GPIO_Port GPIOB
-#define EEPROM_SDA_Pin GPIO_PIN_7
-#define EEPROM_SDA_GPIO_Port GPIOB
 #define USRBUTTON_Pin GPIO_PIN_9
 #define USRBUTTON_GPIO_Port GPIOB
 

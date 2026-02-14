@@ -39,7 +39,7 @@ static int mlx_status;
 
 volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
 
-extern I2C_HandleTypeDef hi2c3;
+extern I2C_HandleTypeDef hi2c1;
 
 void MLX90640_Init(void) {
   mlx_status |= MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
@@ -81,7 +81,7 @@ int MLX90640_ReadAndDisplay(void) {
 }
 
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-  if (hi2c == &hi2c3) {
+  if (hi2c == &hi2c1) {
     new_data_available = 1;
   }
 }
@@ -97,19 +97,18 @@ void redraw_ir_image() {
 }
 
 void application_main(void) {
-  //MLX90640_Init();
-  //UserInterface_Init();
-//
-  //int status = MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
-  //if (status != 0) {
-  //  Error_Handler();
-  //}
+  MLX90640_Init();
+  UserInterface_Init();
 
+  int status = MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
+  if (status != 0) {
+    Error_Handler();
+  }
 
   while (1) {
-   // if (!UserInterface_ShowMenu()) {
-   //   MLX90640_ReadAndDisplay();
-   // }
+    if (!UserInterface_ShowMenu()) {
+      MLX90640_ReadAndDisplay();
+    }
 
     UserInterface_Draw();
 
