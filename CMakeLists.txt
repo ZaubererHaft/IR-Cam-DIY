@@ -35,6 +35,7 @@ enable_language(C ASM)
 add_executable(${CMAKE_PROJECT_NAME}
         Src/application.c
         Src/user_interface.c
+        w25q/W25Qxx.c
 )
 
 # Add STM32CubeMX generated sources
@@ -74,6 +75,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         LCD_2/bitmaps
         Src
         Inc
+        w25q
 )
 
 # Add project symbols (macros)

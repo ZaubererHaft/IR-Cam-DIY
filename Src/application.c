@@ -11,6 +11,7 @@
 #include "usbd_core.h"
 #include "usbd_msc.h"
 #include "user_interface.h"
+#include "W25Qxx.h"
 
 #define  FPS2HZ   0x02
 #define  FPS4HZ   0x03
@@ -97,6 +98,15 @@ void redraw_ir_image() {
 }
 
 void application_main(void) {
+  W25Q_Reset();
+  uint32_t ID = W25Q_ReadID();
+  const char data[] =  "Hello from W25Q";
+  W25Q_Write_Page(0, 250, sizeof(data), data);
+
+  uint8_t rec[64];
+  W25Q_Read(0, 250, 20, rec);
+
+
   MLX90640_Init();
   UserInterface_Init();
 
