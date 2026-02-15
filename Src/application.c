@@ -118,8 +118,7 @@ void application_main(void) {
   W25Q_Init(&flash, &params);
   W25Q_Reset(&flash);
 
-
-  W25Q_ChipErase(&flash);
+  //W25Q_ChipErase(&flash);
 
   uint32_t ID;
   W25Q_ReadID(&flash, &ID);
