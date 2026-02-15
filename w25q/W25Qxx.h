@@ -40,13 +40,18 @@ W25Q_Status W25Q_Reset(const W25Q *flash);
 
 W25Q_Status W25Q_ReadID(const W25Q *flash, uint32_t *out_id);
 
-W25Q_Status W25Q_Read(const W25Q *flash, uint32_t page, uint8_t page_offset, uint32_t size, uint8_t *buffer);
+W25Q_Status W25Q_Read(const W25Q *flash, uint32_t address, uint32_t size, uint8_t *buffer);
 
-W25Q_Status W25Q_FastRead(const W25Q *flash, uint32_t page, uint8_t page_offset, uint32_t size, uint8_t *buffer);
+W25Q_Status W25Q_FastRead(const W25Q *flash, uint32_t address, uint32_t size, uint8_t *buffer);
 
 W25Q_Status W25Q_EraseSector(const W25Q *flash, uint32_t sector);
 
+W25Q_Status W25Q_Write(const W25Q *flash, uint32_t address, uint8_t *data, uint32_t size,
+                            uint8_t *sector_backup);
+
 W25Q_Status W25Q_Write_Page(const W25Q *flash, uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
+
+W25Q_Status W25Q_ChipErase(const W25Q *flash);
 
 
 #endif //CAM_W25QXX_H

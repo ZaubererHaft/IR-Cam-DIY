@@ -97,6 +97,8 @@ void redraw_ir_image() {
   }
 }
 
+  uint8_t sector_backup[4096] = {0};
+
 void application_main(void) {
 
   W25QInitParams params = {
@@ -111,13 +113,42 @@ void application_main(void) {
 
   W25Q_Init(&flash, &params);
   W25Q_Reset(&flash);
+
+
+  W25Q_EraseSector(&flash, 0);
+  W25Q_EraseSector(&flash, 1);
+  W25Q_EraseSector(&flash, 2);
+  W25Q_EraseSector(&flash, 3);
+
+
   uint32_t ID;
   W25Q_ReadID(&flash, &ID);
-  const char data[] =  "Hello from W25Q";
-  W25Q_Write_Page(&flash, 0, 250, sizeof(data), data);
+  char data1[] =  "Hello from W25Q1";
+  char data2[] =  "Hello from W25Q2";
+  char data3[] =  "Hello from W25Q3";
 
   uint8_t rec[64] = {0};
-  W25Q_Read(&flash, 0, 250, 20, rec);
+
+  //two pages, one sector
+  W25Q_Write(&flash, 250, (uint8_t *)data1, sizeof(data1), sector_backup);
+  memset(rec, 0, sizeof(rec));
+  W25Q_Read(&flash, 250, sizeof(data1), rec);
+
+  //two pages over two sectors
+  W25Q_Write(&flash, 4090, (uint8_t *)data2, sizeof(data2), sector_backup);
+  memset(rec, 0, sizeof(rec));
+  W25Q_Read(&flash, 250, sizeof(data1), rec);
+  memset(rec, 0, sizeof(rec));
+  W25Q_Read(&flash, 4090, sizeof(data2), rec);
+
+  //two pages over two sectors with starting sector != 0
+  W25Q_Write(&flash, 8190, (uint8_t *)data3, sizeof(data3), sector_backup);
+  memset(rec, 0, sizeof(rec));
+  W25Q_Read(&flash, 250, sizeof(data1), rec);
+  memset(rec, 0, sizeof(rec));
+  W25Q_Read(&flash, 4090, sizeof(data2), rec);
+  memset(rec, 0, sizeof(rec));
+  W25Q_Read(&flash, 8190, sizeof(data3), rec);
 
 
   MLX90640_Init();
