@@ -1,8 +1,4 @@
 #include "W25Qxx.h"
-
-#include <strings.h>
-#include <sys/types.h>
-
 #include "main.h"
 
 extern SPI_HandleTypeDef hspi3;
@@ -17,7 +13,7 @@ extern SPI_HandleTypeDef hspi3;
 #define W25Q_ERASE_SECTOR 0x20
 #define W25Q_PAGE_PROGRAM 0x02
 #define W25Q_CHIP_ERASE 0x60
-
+#define W25Q_BUSY 0x05
 
 W25Q_Status SPI_Write(uint8_t *data, uint16_t len);
 
@@ -114,58 +110,6 @@ W25Q_Status W25Q_Read(const W25Q *flash, uint32_t address, uint32_t size, uint8_
     return W25Q_do_read(flash, address, size, buffer, W25Q_ENABLE_READ);
 }
 
-W25Q_Status W25Q_Write_Page(const W25Q *flash, uint32_t page, uint16_t offset, uint32_t size, uint8_t *data) {
-    W25Q_Status status = W25Q_OK;
-
-    uint32_t pages_to_write = (size + offset + flash->page_size_byte - 1) / flash->page_size_byte;
-    uint16_t sector_start = page / flash->pages_per_sector;
-    uint16_t sectors_to_delete = (pages_to_write + flash->pages_per_sector - 1) / flash->pages_per_sector;
-
-    if (pages_to_write > flash->pages || sector_start + sectors_to_delete > flash->sectors) {
-        status = W25Q_INVALID_ADDRESS;
-    } else {
-        for (uint16_t i = 0; i < sectors_to_delete; i++) {
-            status |= W25Q_EraseSector(flash, sector_start + i);
-        }
-
-        uint32_t index = 0;
-
-        for (uint32_t i = 0; i < pages_to_write; i++) {
-            uint32_t address_to_write = ((page + i) * flash->page_size_byte) + offset;
-            uint32_t bytes_to_send = bytes_to_write(flash, size, offset);
-
-            status |= write_enable();
-            uint32_t cmd = __REV(address_to_write) | W25Q_PAGE_PROGRAM;
-
-            csLOW();
-            status |= SPI_Write((uint8_t *) &cmd, 4);
-            status |= SPI_Write(&data[index], bytes_to_send);
-            csHIGH();
-
-            index += bytes_to_send;
-            offset = 0;
-            size -= bytes_to_send;
-
-            HAL_Delay(5);
-            status |= write_disable();
-        }
-    }
-
-    return status;
-}
-
-W25Q_Status W25Q_ChipErase(const W25Q *flash) {
-    W25Q_Status status = write_enable();
-    uint32_t cmd = W25Q_CHIP_ERASE;
-
-    csLOW();
-    status |= SPI_Write((uint8_t *) &cmd, 1);
-    csHIGH();
-
-    HAL_Delay(20 * 1000);
-
-    return status;
-}
 
 W25Q_Status do_write_page(const W25Q *flash, uint32_t page, uint8_t *data) {
     W25Q_Status status = write_enable();
@@ -181,7 +125,7 @@ W25Q_Status do_write_page(const W25Q *flash, uint32_t page, uint8_t *data) {
     return status;
 }
 
-W25Q_Status W25Q_Write(const W25Q *flash, const uint32_t address, uint8_t *data, const uint32_t size,
+W25Q_Status W25Q_Write(const W25Q *flash, const uint32_t address, const uint8_t *data, const uint32_t size,
                        uint8_t *sector_backup) {
     W25Q_Status status = W25Q_OK;
 
@@ -193,7 +137,7 @@ W25Q_Status W25Q_Write(const W25Q *flash, const uint32_t address, uint8_t *data,
     uint32_t data_index = 0;
 
     for (uint32_t i = 0; i < sectors_to_delete; i++) {
-        uint32_t cur_sector_address = (sector_start + i) * flash->sector_size_byte;
+        const uint32_t cur_sector_address = (sector_start + i) * flash->sector_size_byte;
 
         // create sector backup
         status |= W25Q_Read(flash, cur_sector_address, flash->sector_size_byte, sector_backup);
@@ -221,6 +165,37 @@ W25Q_Status W25Q_Write(const W25Q *flash, const uint32_t address, uint8_t *data,
         data_index += bytes_to_write_in_sector;
         bytes_remaining -= bytes_to_write_in_sector;
         cur_address = cur_sector_address + flash->sector_size_byte;
+    }
+
+    return status;
+}
+
+W25Q_Status W25Q_ChipErase(const W25Q *flash) {
+    W25Q_Status status = write_enable();
+    uint32_t cmd = W25Q_CHIP_ERASE;
+
+    csLOW();
+    status |= SPI_Write((uint8_t *) &cmd, 1);
+    csHIGH();
+
+    HAL_Delay(20 * 1000);
+
+    return status;
+}
+
+W25Q_Status W25Q_Busy(const W25Q *flash, uint32_t *is_busy) {
+    W25Q_Status status = write_enable();
+    uint32_t cmd = W25Q_BUSY;
+
+    uint8_t busy;
+
+    csLOW();
+    status |= SPI_Write((uint8_t *) &cmd, 4);
+    status |= SPI_Read(&busy, 1);
+    csHIGH();
+
+    if (status == W25Q_OK) {
+        *is_busy = (uint32_t) (busy & 0x01);
     }
 
     return status;
