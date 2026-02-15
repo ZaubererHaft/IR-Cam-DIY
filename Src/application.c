@@ -98,13 +98,26 @@ void redraw_ir_image() {
 }
 
 void application_main(void) {
-  W25Q_Reset();
-  uint32_t ID = W25Q_ReadID();
-  const char data[] =  "Hello from W25Q";
-  W25Q_Write_Page(0, 250, sizeof(data), data);
 
-  uint8_t rec[64];
-  W25Q_Read(0, 250, 20, rec);
+  W25QInitParams params = {
+    .page_size_byte = 256,
+    .pages = 32768,
+    .pages_per_sector = 16,
+    .pages_per_blocks_small = 128,
+    .pages_per_blocks_large = 256
+  };
+
+  W25Q flash;
+
+  W25Q_Init(&flash, &params);
+  W25Q_Reset(&flash);
+  uint32_t ID;
+  W25Q_ReadID(&flash, &ID);
+  const char data[] =  "Hello from W25Q";
+  W25Q_Write_Page(&flash, 0, 250, sizeof(data), data);
+
+  uint8_t rec[64] = {0};
+  W25Q_Read(&flash, 0, 250, 20, rec);
 
 
   MLX90640_Init();

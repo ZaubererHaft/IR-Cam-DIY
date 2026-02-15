@@ -3,12 +3,50 @@
 
 #include <stdint.h>
 
-void W25Q_Reset (void);
+typedef enum W25Q_Status_ {
+    W25Q_OK = 0x00000000,
+    W25Q_NOT_SUPPORTED = 0x00000001,
+    W25Q_SPI_COMM_ERROR = 0x00000002,
+    W25Q_INVALID_ADDRESS = 0x00000004,
+    W25Q_INVALID_SECTOR = 0x00000008,
+} W25Q_Status;
 
-uint32_t W25Q_ReadID (void);
+typedef struct W25Q_ {
+    uint32_t flash_size_bytes;
+    uint32_t pages;
+    uint32_t page_size_byte;
+    uint32_t sectors;
+    uint32_t sector_size_byte;
+    uint32_t pages_per_sector;
+    uint32_t blocks_small;
+    uint32_t block_small_size_byte;
+    uint32_t pages_per_blocks_small;
+    uint32_t blocks_large;
+    uint32_t block_large_size_byte;
+    uint32_t pages_per_blocks_large;
+} W25Q;
 
-void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
+typedef struct W25QInitParams_ {
+    uint32_t pages;
+    uint32_t page_size_byte;
+    uint32_t pages_per_sector;
+    uint32_t pages_per_blocks_small;
+    uint32_t pages_per_blocks_large;
+} W25QInitParams;
 
-void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData);
+W25Q_Status W25Q_Init(W25Q *flash, const W25QInitParams *params);
+
+W25Q_Status W25Q_Reset(const W25Q *flash);
+
+W25Q_Status W25Q_ReadID(const W25Q *flash, uint32_t *out_id);
+
+W25Q_Status W25Q_Read(const W25Q *flash, uint32_t page, uint8_t page_offset, uint32_t size, uint8_t *buffer);
+
+W25Q_Status W25Q_FastRead(const W25Q *flash, uint32_t page, uint8_t page_offset, uint32_t size, uint8_t *buffer);
+
+W25Q_Status W25Q_EraseSector(const W25Q *flash, uint32_t sector);
+
+W25Q_Status W25Q_Write_Page(const W25Q *flash, uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
+
 
 #endif //CAM_W25QXX_H

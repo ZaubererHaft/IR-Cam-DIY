@@ -5,245 +5,214 @@ extern SPI_HandleTypeDef hspi3;
 
 #define numBLOCK 128
 
-void csLOW(void)
-{
-    HAL_GPIO_WritePin(SPI3_CS_GPIO_Port , SPI3_CS_Pin, GPIO_PIN_RESET);
+#define W25Q_CMD_ENABLE_RESET 0x66
+#define W25Q_CMD_RESET 0x99
+#define W25Q_CMD_READ_ID 0x9F
+#define W25Q_ENABLE_READ 0x03
+#define W25Q_ENABLE_FAST_READ 0x0B
+#define W25Q_ENABLE_WRITE 0x06
+#define W25Q_DISABLE_WRITE 0x04
+#define W25Q_ERASE_SECTOR 0x20
+#define W25Q_PAGE_PROGRAM 0x02
+
+void csLOW(void) {
+    HAL_GPIO_WritePin(SPI3_CS_GPIO_Port, SPI3_CS_Pin, GPIO_PIN_RESET);
 }
 
-void csHIGH(void)
-{
+void csHIGH(void) {
     HAL_GPIO_WritePin(SPI3_CS_GPIO_Port, SPI3_CS_Pin, GPIO_PIN_SET);
 }
 
-void SPI_Write (uint8_t *data, uint8_t len)
-{
-    HAL_SPI_Transmit(&hspi3, data, len, 2000);
-}
-
-void SPI_Read (uint8_t *data, uint8_t len)
-{
-    HAL_SPI_Receive(&hspi3, data, len, 5000);
-}
-
-void write_enable (void)
-{
-    uint8_t tData = 0x06;  // enable Write
-    csLOW();  // pull the CS LOW
-    SPI_Write(&tData, 1);
-    csHIGH();  // pull the HIGH
-
-    HAL_Delay (5);  // Write cycle delay (5ms)
-}
-
-void write_disable (void)
-{
-    uint8_t tData = 0x04;  // disable Write
-    csLOW();  // pull the CS LOW
-    SPI_Write(&tData, 1);
-    csHIGH();  // pull the HIGH
-
-    HAL_Delay (5);  // Write cycle delay (5ms)
+W25Q_Status SPI_Write(uint8_t *data, uint8_t len) {
+    if (HAL_SPI_Transmit(&hspi3, data, len, 2000) == HAL_OK) {
+        return W25Q_OK;
     }
 
-uint32_t bytestowrite (uint32_t size, uint16_t offset)
-{
-    if ((size+offset)<256) return size;
-    else return 256-offset;
+    return W25Q_SPI_COMM_ERROR;
+}
+
+W25Q_Status SPI_Read(uint8_t *data, uint8_t len) {
+    if (HAL_SPI_Receive(&hspi3, data, len, 5000) == HAL_OK) {
+        return W25Q_OK;
+    }
+    return W25Q_SPI_COMM_ERROR;
 }
 
 
-void W25Q_Erase_Sector (uint16_t numsector)
-{
-    uint8_t tData[6];
-    uint32_t memAddr = numsector*16*256;   // Each sector contains 16 pages * 256 bytes
-
-    write_enable();
-
-    if (numBLOCK<512)   // Chip Size<256Mb
-    {
-        tData[0] = 0x20;  // Erase sector
-        tData[1] = (memAddr>>16)&0xFF;  // MSB of the memory Address
-        tData[2] = (memAddr>>8)&0xFF;
-        tData[3] = (memAddr)&0xFF; // LSB of the memory Address
-
-        csLOW();
-        SPI_Write(tData, 4);
-        csHIGH();
-    }
-    else  // we use 32bit memory address for chips >= 256Mb
-    {
-        tData[0] = 0x21;  // ERASE Sector with 32bit address
-        tData[1] = (memAddr>>24)&0xFF;
-        tData[2] = (memAddr>>16)&0xFF;
-        tData[3] = (memAddr>>8)&0xFF;
-        tData[4] = memAddr&0xFF;
-
-        csLOW();  // pull the CS LOW
-        SPI_Write(tData, 5);
-        csHIGH();  // pull the HIGH
-    }
-
-    HAL_Delay(450);  // 450ms delay for sector erase
-
-    write_disable();
-}
-
-void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
-{
-    uint8_t tData[266];
-    uint32_t startPage = page;
-    uint32_t endPage  = startPage + ((size+offset-1)/256);
-    uint32_t numPages = endPage-startPage+1;
-
-    uint16_t startSector  = startPage/16;
-    uint16_t endSector  = endPage/16;
-    uint16_t numSectors = endSector-startSector+1;
-    for (uint16_t i=0; i<numSectors; i++)
-    {
-        W25Q_Erase_Sector(startSector++);
-    }
-
-    uint32_t dataPosition = 0;
-
-    // write the data
-    for (uint32_t i=0; i<numPages; i++)
-    {
-        uint32_t memAddr = (startPage*256)+offset;
-        uint16_t bytesremaining  = bytestowrite(size, offset);
-        write_enable();
-        uint32_t indx = 0;
-        if (numBLOCK<512)   // Chip Size<256Mb
-        {
-            tData[0] = 0x02;  // page program
-            tData[1] = (memAddr>>16)&0xFF;  // MSB of the memory Address
-            tData[2] = (memAddr>>8)&0xFF;
-            tData[3] = (memAddr)&0xFF; // LSB of the memory Address
-
-            indx = 4;
-        }
-        else
-        {
-            tData[0] = 0x12;  // page program with 4-Byte Address
-            tData[1] = (memAddr>>24)&0xFF;  // MSB of the memory Address
-            tData[2] = (memAddr>>16)&0xFF;
-            tData[3] = (memAddr>>8)&0xFF;
-            tData[4] = (memAddr)&0xFF; // LSB of the memory Address
-
-            indx = 5;
-        }
-        uint16_t bytestosend  = bytesremaining + indx;
-
-        for (uint16_t i=0; i<bytesremaining; i++)
-        {
-            tData[indx++] = data[i+dataPosition];
-        }
-        csLOW();
-        SPI_Write(tData, bytestosend);
-        csHIGH();
-
-        startPage++;
-        offset = 0;
-        size = size-bytesremaining;
-        dataPosition = dataPosition+bytesremaining;
-
-        HAL_Delay(5);
-        write_disable();
-    }
-}
-
-
-
-void W25Q_FastRead (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData)
-{
-    uint8_t tData[6];
-    uint32_t memAddr = (startPage*256) + offset;
-
-    if (numBLOCK<512)   // Chip Size<256Mb
-    {
-        tData[0] = 0x0B;  // enable Fast Read
-        tData[1] = (memAddr>>16)&0xFF;  // MSB of the memory Address
-        tData[2] = (memAddr>>8)&0xFF;
-        tData[3] = (memAddr)&0xFF; // LSB of the memory Address
-        tData[4] = 0;  // Dummy clock
-    }
-    else
-    {
-        tData[0] = 0x0C;  // Fast Read with 4-Byte Address
-        tData[1] = (memAddr>>24)&0xFF;  // MSB of the memory Address
-        tData[2] = (memAddr>>16)&0xFF;
-        tData[3] = (memAddr>>8)&0xFF;
-        tData[4] = (memAddr)&0xFF; // LSB of the memory Address
-        tData[5] = 0;  // Dummy clock
-    }
-
-    csLOW();  // pull the CS Low
-    if (numBLOCK<512)
-    {
-        SPI_Write(tData, 5);  // send read instruction along with the 24 bit memory address
-    }
-    else
-    {
-        SPI_Write(tData, 6);  // send read instruction along with the 32 bit memory address
-    }
-
-    SPI_Read(rData, size);  // Read the data
-    csHIGH();  // pull the CS High
-}
-
-void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData)
-{
-    uint8_t tData[5];
-    uint32_t memAddr = (startPage*256) + offset;
-
-    if (numBLOCK<512)   // Chip Size<256Mb
-    {
-        tData[0] = 0x03;  // enable Read
-        tData[1] = (memAddr>>16)&0xFF;  // MSB of the memory Address
-        tData[2] = (memAddr>>8)&0xFF;
-        tData[3] = (memAddr)&0xFF; // LSB of the memory Address
-    }
-    else
-    {
-        tData[0] = 0x13;  // Read Data with 4-Byte Address
-        tData[1] = (memAddr>>24)&0xFF;  // MSB of the memory Address
-        tData[2] = (memAddr>>16)&0xFF;
-        tData[3] = (memAddr>>8)&0xFF;
-        tData[4] = (memAddr)&0xFF; // LSB of the memory Address
-    }
-    csLOW();  // pull the CS Low
-    if (numBLOCK<512)
-    {
-        SPI_Write(tData, 4);  // send read instruction along with the 24 bit memory address
-    }
-    else
-    {
-        SPI_Write(tData, 5);  // send read instruction along with the 32 bit memory address
-    }
-
-    SPI_Read(rData, size);  // Read the data
-    csHIGH();  // pull the CS High
-}
-
-
-
-void W25Q_Reset (void)
-{
-    uint8_t tData[2];
-
-    tData[0] = 0x66;  // enable Reset
-    tData[1] = 0x99;  // Reset
+/**
+ *  Write Enable must be called before every page program
+ */
+W25Q_Status write_enable(void) {
+    uint8_t tData = W25Q_ENABLE_WRITE;
     csLOW();
-    SPI_Write(tData, 2);
-    csHIGH(); // pull the HIGH
+    W25Q_Status status = SPI_Write(&tData, 1);
+    csHIGH();
+
+    HAL_Delay(5);
+    return status;
 }
 
-uint32_t W25Q_ReadID (void)
-{
-    uint8_t tData = 0x9f;  // Read ID
-    uint8_t rData[3];
-    csLOW();  // pull the CS LOW
-    SPI_Write(&tData, 1);
-    SPI_Read(rData, 3);
-    csHIGH();  // pull the HIGH
-    return ((rData[0]<<16)|(rData[1]<<8)|rData[2]); // MFN ID : MEM ID : CAPACITY ID
+/**
+ *  Write Disable must be called before every page program
+ */
+W25Q_Status write_disable(void) {
+    uint8_t tData = W25Q_DISABLE_WRITE;
+    csLOW();
+    W25Q_Status status = SPI_Write(&tData, 1);
+    csHIGH();
+
+    HAL_Delay(5);
+    return status;
+}
+
+uint32_t bytes_to_write(const W25Q *flash, uint32_t size, uint16_t offset) {
+    if ((size + offset) < flash->page_size_byte) {
+        return size;
+    }
+
+    return flash->page_size_byte - offset;
+}
+
+
+W25Q_Status W25Q_Write_Page(const W25Q *flash, uint32_t page, uint16_t offset, uint32_t size, uint8_t *data) {
+    W25Q_Status status = W25Q_OK;
+
+    uint32_t pages_to_write = (size + offset + flash->page_size_byte - 1) / flash->page_size_byte;
+    uint16_t sector_start = page / flash->pages_per_sector;
+    uint16_t sectors_to_delete = (pages_to_write + flash->pages_per_sector - 1) / flash->pages_per_sector;
+
+    if (pages_to_write > flash->pages || sector_start + sectors_to_delete > flash->sectors) {
+        status = W25Q_INVALID_ADDRESS;
+    } else {
+        for (uint16_t i = 0; i < sectors_to_delete; i++) {
+            status |= W25Q_EraseSector(flash, sector_start + i);
+        }
+
+        uint32_t index = 0;
+
+        for (uint32_t i = 0; i < pages_to_write; i++) {
+            uint32_t address_to_write = ((page + i) * flash->page_size_byte) + offset;
+            uint32_t bytes_to_send = bytes_to_write(flash, size, offset);
+
+            status |= write_enable();
+            uint32_t cmd = __REV(address_to_write) | W25Q_PAGE_PROGRAM;
+
+            csLOW();
+            status |= SPI_Write((uint8_t *) &cmd, 4);
+            csHIGH();
+
+            csLOW();
+            status |= SPI_Write(&data[index], bytes_to_send);
+            csHIGH();
+
+            index += bytes_to_send;
+            offset = 0;
+            size -= bytes_to_send;
+
+            HAL_Delay(5);
+            status |= write_disable();
+        }
+    }
+
+    return status;
+}
+
+
+W25Q_Status W25Q_EraseSector(const W25Q *flash, uint32_t sector) {
+    W25Q_Status status = W25Q_OK;
+
+    if (sector > flash->sectors) {
+        status = W25Q_INVALID_SECTOR;
+    } else {
+        uint32_t address_to_delete = sector * flash->sector_size_byte;
+        uint32_t cmd = __REV(address_to_delete) | W25Q_ERASE_SECTOR;
+
+        status |= write_enable();
+        csLOW();
+        status |= SPI_Write((uint8_t *) &cmd, 4);
+        csHIGH();
+        HAL_Delay(450); // 450ms delay for sector erase
+        status |= write_disable();
+    }
+
+    return status;
+}
+
+W25Q_Status W25Q_do_read(const W25Q *flash, uint32_t page, uint8_t page_offset_byte, uint32_t size, uint8_t *buffer,
+                         uint32_t mode) {
+    W25Q_Status status = W25Q_OK;
+
+    const uint32_t address_to_read = (page * flash->page_size_byte) + page_offset_byte;
+
+    if (address_to_read + size > flash->flash_size_bytes) {
+        status = W25Q_INVALID_ADDRESS;
+    } else {
+        uint32_t tData = __REV(address_to_read) | mode;
+        csLOW();
+        status |= SPI_Write((uint8_t *) &tData, 4);
+        status |= SPI_Read(buffer, size);
+        csHIGH();
+    }
+
+    return status;
+}
+
+W25Q_Status W25Q_FastRead(const W25Q *flash, uint32_t page, uint8_t page_offset, uint32_t size, uint8_t *buffer) {
+    return W25Q_do_read(flash, page, page_offset, size, buffer, W25Q_ENABLE_FAST_READ);
+}
+
+W25Q_Status W25Q_Read(const W25Q *flash, uint32_t page, uint8_t page_offset, uint32_t size, uint8_t *buffer) {
+    return W25Q_do_read(flash, page, page_offset, size, buffer, W25Q_ENABLE_READ);
+}
+
+W25Q_Status W25Q_Init(W25Q *flash, const W25QInitParams *params) {
+    flash->pages = params->pages;
+    flash->page_size_byte = params->page_size_byte;
+    flash->pages_per_sector = params->pages_per_sector;
+    flash->pages_per_blocks_small = params->pages_per_blocks_small;
+    flash->pages_per_blocks_large = params->pages_per_blocks_large;
+
+    flash->flash_size_bytes = flash->page_size_byte * flash->pages;
+
+    flash->sector_size_byte = flash->page_size_byte * flash->pages_per_sector;
+    flash->sectors = flash->flash_size_bytes / flash->sector_size_byte;
+
+    flash->block_small_size_byte = flash->pages_per_blocks_small * flash->sector_size_byte;
+    flash->blocks_small = flash->flash_size_bytes / flash->block_small_size_byte;
+
+    flash->block_large_size_byte = flash->pages_per_blocks_large * flash->sector_size_byte;
+    flash->blocks_large = flash->flash_size_bytes / flash->block_large_size_byte;
+
+    // to simplify the driver, don't support larger flashes (would need 32 addresses)
+    if (flash->blocks_small >= 512) {
+        return W25Q_NOT_SUPPORTED;
+    }
+    return W25Q_OK;
+}
+
+W25Q_Status W25Q_Reset(const W25Q *flash) {
+    uint8_t tData[2] = {W25Q_CMD_ENABLE_RESET, W25Q_CMD_RESET};
+
+    csLOW();
+    const W25Q_Status status = SPI_Write(tData, 2);
+    csHIGH();
+    HAL_Delay(1);
+
+    return status;
+}
+
+W25Q_Status W25Q_ReadID(const W25Q *flash, uint32_t *out_id) {
+    W25Q_Status status = W25Q_OK;
+    uint8_t cmd = W25Q_CMD_READ_ID;
+
+    csLOW();
+    status |= SPI_Write(&cmd, 1);
+    status |= SPI_Read((uint8_t *) out_id, 3);
+    csHIGH();
+
+    if (status == W25Q_OK) {
+        *out_id = __REV(*out_id) >> 8;
+    }
+
+    return status;
 }
