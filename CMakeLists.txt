@@ -54,6 +54,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         LCD_2/ILI9341_GFX.c
         LCD_2/ILI9341_DMA_driver.c
         Src/heatmap.c
+        Src/usb_sync.c
 )
 
 if (CMAKE_BUILD_TYPE MATCHES Release)

@@ -23,6 +23,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "W25Qxx.h"
+#include "usb_sync.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,8 +64,6 @@
   */
 
 #define STORAGE_LUN_NBR                  1
-#define STORAGE_BLK_NBR                  0x10000
-#define STORAGE_BLK_SIZ                  0x200
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
 
@@ -94,7 +93,8 @@
 
 /* USER CODE BEGIN INQUIRY_DATA_FS */
 /** USB Mass storage Standard Inquiry Data. */
-const int8_t STORAGE_Inquirydata_FS[] = {/* 36 */
+const int8_t STORAGE_Inquirydata_FS[] = {
+  /* 36 */
 
   /* LUN 0 */
   0x00,
@@ -108,7 +108,7 @@ const int8_t STORAGE_Inquirydata_FS[] = {/* 36 */
   'S', 'T', 'M', ' ', ' ', ' ', ' ', ' ', /* Manufacturer : 8 bytes */
   'P', 'r', 'o', 'd', 'u', 'c', 't', ' ', /* Product      : 16 Bytes */
   ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-  '0', '.', '0' ,'1'                      /* Version      : 4 Bytes */
+  '0', '.', '0', '1' /* Version      : 4 Bytes */
 };
 /* USER CODE END INQUIRY_DATA_FS */
 
@@ -128,6 +128,9 @@ const int8_t STORAGE_Inquirydata_FS[] = {/* 36 */
 extern USBD_HandleTypeDef hUsbDeviceFS;
 
 /* USER CODE BEGIN EXPORTED_VARIABLES */
+extern W25Q flash;
+
+extern USB_SYNC_Queue usb_synch_queue;
 
 /* USER CODE END EXPORTED_VARIABLES */
 
@@ -141,11 +144,17 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
   */
 
 static int8_t STORAGE_Init_FS(uint8_t lun);
+
 static int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_size);
+
 static int8_t STORAGE_IsReady_FS(uint8_t lun);
+
 static int8_t STORAGE_IsWriteProtected_FS(uint8_t lun);
+
 static int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len);
+
 static int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len);
+
 static int8_t STORAGE_GetMaxLun_FS(void);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
@@ -165,7 +174,7 @@ USBD_StorageTypeDef USBD_Storage_Interface_fops_FS =
   STORAGE_Read_FS,
   STORAGE_Write_FS,
   STORAGE_GetMaxLun_FS,
-  (int8_t *)STORAGE_Inquirydata_FS
+  (int8_t *) STORAGE_Inquirydata_FS
 };
 
 /* Private functions ---------------------------------------------------------*/
@@ -174,10 +183,9 @@ USBD_StorageTypeDef USBD_Storage_Interface_fops_FS =
   * @param  lun: Logical unit number.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_Init_FS(uint8_t lun)
-{
+int8_t STORAGE_Init_FS(uint8_t lun) {
   /* USER CODE BEGIN 2 */
- UNUSED(lun);
+  UNUSED(lun);
   return (USBD_OK);
   /* USER CODE END 2 */
 }
@@ -189,13 +197,12 @@ int8_t STORAGE_Init_FS(uint8_t lun)
   * @param  block_size: Block size.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_size)
-{
+int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_size) {
   /* USER CODE BEGIN 3 */
   UNUSED(lun);
 
-  *block_num  = STORAGE_BLK_NBR;
-  *block_size = STORAGE_BLK_SIZ;
+  *block_num = flash.sectors;
+  *block_size = flash.sector_size_byte;
   return (USBD_OK);
   /* USER CODE END 3 */
 }
@@ -205,12 +212,16 @@ int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_
   * @param  lun:  Logical unit number.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_IsReady_FS(uint8_t lun)
-{
+int8_t STORAGE_IsReady_FS(uint8_t lun) {
   /* USER CODE BEGIN 4 */
   UNUSED(lun);
 
-  return USBD_OK;
+  uint32_t busy;
+  W25Q_Busy(&flash, &busy);
+  if (busy) {
+    return (USBD_BUSY);
+  }
+  return (USBD_OK);
   /* USER CODE END 4 */
 }
 
@@ -219,8 +230,7 @@ int8_t STORAGE_IsReady_FS(uint8_t lun)
   * @param  lun: Logical unit number.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
-{
+int8_t STORAGE_IsWriteProtected_FS(uint8_t lun) {
   /* USER CODE BEGIN 5 */
   UNUSED(lun);
 
@@ -236,15 +246,22 @@ int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
   * @param  blk_len: Blocks number.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
-{
+int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len) {
   /* USER CODE BEGIN 6 */
   UNUSED(lun);
   UNUSED(buf);
   UNUSED(blk_addr);
   UNUSED(blk_len);
 
-  return (USBD_OK);
+  if (USB_SYNC_QueueSize(&usb_synch_queue) > 0) {
+    return (USBD_BUSY);
+  }
+
+  if (W25Q_Read(&flash, blk_addr * blk_len, blk_len * flash.sector_size_byte, buf) == W25Q_OK) {
+    return (USBD_OK);
+  }
+
+  return (USBD_FAIL);
   /* USER CODE END 6 */
 }
 
@@ -256,16 +273,25 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
   * @param  blk_len: Blocks number.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
-{
+int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len) {
   /* USER CODE BEGIN 7 */
   UNUSED(lun);
   UNUSED(buf);
   UNUSED(blk_addr);
   UNUSED(blk_len);
 
+  USB_SYNC *synch_obj = USB_SYNC_AllocateNext(&usb_synch_queue);
+
+  if (synch_obj == NULL) {
+    return USBD_BUSY;
+  }
+
+  memcpy(synch_obj->USB_BlockBuffer, &buf[blk_addr * flash.sector_size_byte], blk_len * flash.sector_size_byte);
+  synch_obj->address = blk_addr * blk_len * flash.sector_size_byte;
 
   return (USBD_OK);
+
+
   /* USER CODE END 7 */
 }
 
@@ -274,8 +300,7 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
   * @param  None
   * @retval Lun(s) number.
   */
-int8_t STORAGE_GetMaxLun_FS(void)
-{
+int8_t STORAGE_GetMaxLun_FS(void) {
   /* USER CODE BEGIN 8 */
   return (STORAGE_LUN_NBR - 1);
   /* USER CODE END 8 */

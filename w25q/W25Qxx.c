@@ -172,25 +172,25 @@ W25Q_Status W25Q_Write(const W25Q *flash, const uint32_t address, const uint8_t 
 
 W25Q_Status W25Q_ChipErase(const W25Q *flash) {
     W25Q_Status status = write_enable();
-    uint32_t cmd = W25Q_CHIP_ERASE;
 
     csLOW();
+    uint32_t cmd = W25Q_CHIP_ERASE;
     status |= SPI_Write((uint8_t *) &cmd, 1);
     csHIGH();
 
     HAL_Delay(20 * 1000);
+    status |= write_disable();
 
     return status;
 }
 
 W25Q_Status W25Q_Busy(const W25Q *flash, uint32_t *is_busy) {
-    W25Q_Status status = write_enable();
     uint32_t cmd = W25Q_BUSY;
 
     uint8_t busy;
 
     csLOW();
-    status |= SPI_Write((uint8_t *) &cmd, 4);
+    W25Q_Status status = SPI_Write((uint8_t *) &cmd, 4);
     status |= SPI_Read(&busy, 1);
     csHIGH();
 

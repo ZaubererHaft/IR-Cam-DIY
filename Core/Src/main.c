@@ -108,7 +108,6 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM2_Init();
   MX_I2C1_Init();
-  MX_USB_DEVICE_Init();
   MX_SPI3_Init();
   /* USER CODE BEGIN 2 */
   application_main();
