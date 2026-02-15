@@ -195,38 +195,31 @@ W25Q_Status W25Q_Write(const W25Q *flash, const uint32_t address, uint8_t *data,
     for (uint32_t i = 0; i < sectors_to_delete; i++) {
         uint32_t cur_sector_address = (sector_start + i) * flash->sector_size_byte;
 
+        // create sector backup
         status |= W25Q_Read(flash, cur_sector_address, flash->sector_size_byte, sector_backup);
+
+        // delete full sector
         status |= W25Q_EraseSector(flash, sector_start + i);
 
+        // overwrite section backup with new data
         const uint32_t address_in_sector = cur_address - (sector_start + i) * flash->sector_size_byte;
         const uint32_t bytes_in_sector_remining = flash->sector_size_byte - address_in_sector;
-
         const uint32_t bytes_to_write_in_sector = MIN(bytes_in_sector_remining, bytes_remaining);
-        const uint32_t page_within_sector = address_in_sector / flash->page_size_byte;
 
-        // restore pages before
-        for (uint32_t j = 0; j < page_within_sector; j++) {
-            //page is the absolute page in the flash, whereas memory is local to the section backup
+        for (uint32_t j = 0; j < bytes_to_write_in_sector; j++) {
+            sector_backup[address_in_sector + j] = data[data_index + j];
+        }
+
+        // write new section data back page-wise
+        for (uint32_t j = 0; j < flash->pages_per_sector; j++) {
+            //"page" is the absolute page in the flash, whereas "memory" is the local index in the section backup
             const uint32_t page = (sector_start + i) * flash->pages_per_sector + j;
             const uint32_t memory = j * flash->page_size_byte;
             status |= do_write_page(flash, page, &sector_backup[memory]);
         }
 
-        // now: write changed and remaining pages
-        for (uint32_t j = 0; j < bytes_to_write_in_sector; j++) {
-            sector_backup[address_in_sector + j] = data[data_index + j];
-        }
-
         data_index += bytes_to_write_in_sector;
         bytes_remaining -= bytes_to_write_in_sector;
-
-        uint32_t pages_within_sector = flash->pages_per_sector - page_within_sector;
-        for (uint32_t j = 0; j < pages_within_sector; j++) {
-            const uint32_t page = (sector_start + i) * flash->pages_per_sector + j + page_within_sector;
-            const uint32_t memory = (j + page_within_sector) * flash->page_size_byte;
-            status |= do_write_page(flash, page, &sector_backup[memory]);
-        }
-
         cur_address = cur_sector_address + flash->sector_size_byte;
     }
 
