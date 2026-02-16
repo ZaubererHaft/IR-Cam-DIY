@@ -8,7 +8,7 @@ typedef struct USB_SYNC_ {
     uint32_t address;
 } USB_SYNC;
 
-#define USB_SYNC_QUEUE_CAPACITY 10
+#define USB_SYNC_QUEUE_CAPACITY 8
 
 typedef struct USB_SYNC_Queue_ {
     USB_SYNC data[USB_SYNC_QUEUE_CAPACITY];

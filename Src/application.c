@@ -114,62 +114,14 @@ void application_main(void) {
     .pages_per_blocks_large = 256
   };
 
-
   W25Q_Init(&flash, &params);
   W25Q_Reset(&flash);
 
-  //W25Q_ChipErase(&flash);
-
   uint32_t ID;
   W25Q_ReadID(&flash, &ID);
-  // char data1[] =  "Hello from W25Q1";
-  // char data2[] =  "Hello from W25Q2";
-  // char data3[] =  "Hello from W25Q3";
-
-  // uint8_t rec[64] = {0};
-
-  // //two pages, one sector
-  // W25Q_Write(&flash, 250, (uint8_t *)data1, sizeof(data1), sector_backup);
-  // memset(rec, 0, sizeof(rec));
-  // W25Q_Read(&flash, 250, sizeof(data1), rec);
-
-  // //two pages over two sectors
-  // W25Q_Write(&flash, 4090, (uint8_t *)data2, sizeof(data2), sector_backup);
-  // memset(rec, 0, sizeof(rec));
-  // W25Q_Read(&flash, 250, sizeof(data1), rec);
-  // memset(rec, 0, sizeof(rec));
-  // W25Q_Read(&flash, 4090, sizeof(data2), rec);
-
-  // //two pages over two sectors with starting sector != 0
-  // W25Q_Write(&flash, 8190, (uint8_t *)data3, sizeof(data3), sector_backup);
-  // memset(rec, 0, sizeof(rec));
-  // W25Q_Read(&flash, 250, sizeof(data1), rec);
-  // memset(rec, 0, sizeof(rec));
-  // W25Q_Read(&flash, 4090, sizeof(data2), rec);
-  // memset(rec, 0, sizeof(rec));
-  // W25Q_Read(&flash, 8190, sizeof(data3), rec);
 
   UserInterface_Init();
-
   MX_USB_DEVICE_Init();
-
-  while (1) {
-
-    USB_SYNC *synch = USB_SYNC_Head(&usb_synch_queue);
-
-    if (synch != NULL) {
-
-      W25Q_Status status = W25Q_Write(&flash, synch->address, (uint8_t *) synch->USB_BlockBuffer,
-                                      sizeof(synch->USB_BlockBuffer), sector_backup);
-      if (status != W25Q_OK) {
-        Error_Handler();
-      } else {
-        USB_SYNC_Head_DeallocateHead(&usb_synch_queue);
-      }
-    }
-  }
-
-
   MLX90640_Init();
 
   int status = MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
@@ -178,15 +130,26 @@ void application_main(void) {
   }
 
   while (1) {
-    if (!UserInterface_ShowMenu()) {
-      MLX90640_ReadAndDisplay();
-    }
+    USB_SYNC *synch = USB_SYNC_Head(&usb_synch_queue);
+    if (synch != NULL) {
+      W25Q_Status flash_status = W25Q_Write(&flash, synch->address, (uint8_t *) synch->USB_BlockBuffer,
+                                            sizeof(synch->USB_BlockBuffer), sector_backup);
+      if (flash_status != W25Q_OK) {
+        Error_Handler();
+      } else {
+        USB_SYNC_Head_DeallocateHead(&usb_synch_queue);
+      }
+    } else {
+      if (!UserInterface_ShowMenu()) {
+        MLX90640_ReadAndDisplay();
+      }
 
-    UserInterface_Draw();
+      UserInterface_Draw();
 
-    if (UserInterface_NeedsIRImageRedraw()) {
-      redraw_ir_image();
-      UserInterface_IRImageRedrawn();
+      if (UserInterface_NeedsIRImageRedraw()) {
+        redraw_ir_image();
+        UserInterface_IRImageRedrawn();
+      }
     }
   }
 }
