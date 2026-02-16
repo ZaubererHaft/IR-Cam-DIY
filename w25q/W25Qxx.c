@@ -222,11 +222,11 @@ W25Q_Status W25Q_EraseSector(const W25Q *flash, uint32_t sector) {
 }
 
 void csLOW(void) {
-    HAL_GPIO_WritePin(SPI3_CS_GPIO_Port, SPI3_CS_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(FLASH_CS_GPIO_Port, FLASH_CS_Pin, GPIO_PIN_RESET);
 }
 
 void csHIGH(void) {
-    HAL_GPIO_WritePin(SPI3_CS_GPIO_Port, SPI3_CS_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(FLASH_CS_GPIO_Port, FLASH_CS_Pin, GPIO_PIN_SET);
 }
 
 W25Q_Status SPI_Write(uint8_t *data, uint16_t len) {

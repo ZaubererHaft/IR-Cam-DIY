@@ -430,7 +430,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, USER_LED_Pin|RST_Pin|DC_Pin|CS_Pin
-                          |BATTCHARGE_Pin|SPI3_CS_Pin, GPIO_PIN_RESET);
+                          |BATTCHARGE_Pin|FLASH_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : USER_LED_Pin RST_Pin DC_Pin CS_Pin */
   GPIO_InitStruct.Pin = USER_LED_Pin|RST_Pin|DC_Pin|CS_Pin;
@@ -458,12 +458,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(BATTCHARGE_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SPI3_CS_Pin */
-  GPIO_InitStruct.Pin = SPI3_CS_Pin;
+  /*Configure GPIO pin : FLASH_CS_Pin */
+  GPIO_InitStruct.Pin = FLASH_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(SPI3_CS_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(FLASH_CS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USRBUTTON_Pin */
   GPIO_InitStruct.Pin = USRBUTTON_Pin;

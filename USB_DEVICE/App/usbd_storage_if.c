@@ -66,6 +66,8 @@
   */
 
 #define STORAGE_LUN_NBR                  1
+#define STORAGE_BLK_NBR                  0x10000
+#define STORAGE_BLK_SIZ                  0x200
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
 
@@ -146,17 +148,11 @@ extern USB_SYNC_Queue usb_synch_queue;
   */
 
 static int8_t STORAGE_Init_FS(uint8_t lun);
-
 static int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_size);
-
 static int8_t STORAGE_IsReady_FS(uint8_t lun);
-
 static int8_t STORAGE_IsWriteProtected_FS(uint8_t lun);
-
 static int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len);
-
 static int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len);
-
 static int8_t STORAGE_GetMaxLun_FS(void);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
@@ -176,7 +172,7 @@ USBD_StorageTypeDef USBD_Storage_Interface_fops_FS =
   STORAGE_Read_FS,
   STORAGE_Write_FS,
   STORAGE_GetMaxLun_FS,
-  (int8_t *) STORAGE_Inquirydata_FS
+  (int8_t *)STORAGE_Inquirydata_FS
 };
 
 /* Private functions ---------------------------------------------------------*/
@@ -185,7 +181,8 @@ USBD_StorageTypeDef USBD_Storage_Interface_fops_FS =
   * @param  lun: Logical unit number.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_Init_FS(uint8_t lun) {
+int8_t STORAGE_Init_FS(uint8_t lun)
+{
   /* USER CODE BEGIN 2 */
   UNUSED(lun);
   return (USBD_OK);
@@ -199,7 +196,8 @@ int8_t STORAGE_Init_FS(uint8_t lun) {
   * @param  block_size: Block size.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_size) {
+int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_size)
+{
   /* USER CODE BEGIN 3 */
   UNUSED(lun);
 
@@ -214,7 +212,8 @@ int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_
   * @param  lun:  Logical unit number.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_IsReady_FS(uint8_t lun) {
+int8_t STORAGE_IsReady_FS(uint8_t lun)
+{
   /* USER CODE BEGIN 4 */
   UNUSED(lun);
 
@@ -232,7 +231,8 @@ int8_t STORAGE_IsReady_FS(uint8_t lun) {
   * @param  lun: Logical unit number.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_IsWriteProtected_FS(uint8_t lun) {
+int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
+{
   /* USER CODE BEGIN 5 */
   UNUSED(lun);
 
@@ -248,7 +248,8 @@ int8_t STORAGE_IsWriteProtected_FS(uint8_t lun) {
   * @param  blk_len: Blocks number.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len) {
+int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
+{
   /* USER CODE BEGIN 6 */
   UNUSED(lun);
   UNUSED(buf);
@@ -287,7 +288,8 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
   * @param  blk_len: Blocks number.
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len) {
+int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
+{
   /* USER CODE BEGIN 7 */
   UNUSED(lun);
   UNUSED(buf);
@@ -314,7 +316,8 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
   * @param  None
   * @retval Lun(s) number.
   */
-int8_t STORAGE_GetMaxLun_FS(void) {
+int8_t STORAGE_GetMaxLun_FS(void)
+{
   /* USER CODE BEGIN 8 */
   return (STORAGE_LUN_NBR - 1);
   /* USER CODE END 8 */

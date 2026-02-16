@@ -90,8 +90,14 @@ void Error_Handler(void);
 #define EXT_POWER_GPIO_Port GPIOB
 #define BATTCHARGE_Pin GPIO_PIN_9
 #define BATTCHARGE_GPIO_Port GPIOA
-#define SPI3_CS_Pin GPIO_PIN_15
-#define SPI3_CS_GPIO_Port GPIOA
+#define FLASH_CS_Pin GPIO_PIN_15
+#define FLASH_CS_GPIO_Port GPIOA
+#define FLASH_SCK_Pin GPIO_PIN_3
+#define FLASH_SCK_GPIO_Port GPIOB
+#define FLASH_MISO_Pin GPIO_PIN_4
+#define FLASH_MISO_GPIO_Port GPIOB
+#define FLASH_MOSI_Pin GPIO_PIN_5
+#define FLASH_MOSI_GPIO_Port GPIOB
 #define SCL_Pin GPIO_PIN_6
 #define SCL_GPIO_Port GPIOB
 #define SDA_Pin GPIO_PIN_7
