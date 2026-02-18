@@ -36,6 +36,7 @@ add_executable(${CMAKE_PROJECT_NAME}
         Src/application.c
         Src/user_interface.c
         w25q/W25Qxx.c
+        Src/file_system.c
 )
 
 # Add STM32CubeMX generated sources

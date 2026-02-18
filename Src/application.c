@@ -8,6 +8,8 @@
 #include "heatmap.h"
 #include "application.h"
 
+#include "ff_gen_drv.h"
+#include "file_system.h"
 #include "usbd_core.h"
 #include "usbd_msc.h"
 #include "usb_device.h"
@@ -99,10 +101,8 @@ void redraw_ir_image() {
   }
 }
 
-static uint8_t sector_backup[4096] = {0};
-
+uint8_t sector_backup[4096] = {0};
 USB_SYNC_Queue usb_synch_queue;
-
 W25Q flash;
 
 void application_main(void) {
@@ -121,14 +121,21 @@ void application_main(void) {
   W25Q_ReadID(&flash, &ID);
 
   UserInterface_Init();
-  MX_USB_DEVICE_Init();
-  MLX90640_Init();
+  FileSystem_Init();
 
+        FileSystem_WriteBitmap(image, 32 * 24);
+
+  MX_USB_DEVICE_Init();
+
+  MLX90640_Init();
   int status = MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
   if (status != 0) {
     Error_Handler();
   }
 
+
+
+  int32_t do_save = 1;
   while (1) {
     USB_SYNC *synch = USB_SYNC_Head(&usb_synch_queue);
     if (synch != NULL) {
@@ -149,6 +156,10 @@ void application_main(void) {
       if (UserInterface_NeedsIRImageRedraw()) {
         redraw_ir_image();
         UserInterface_IRImageRedrawn();
+      }
+
+      if (HAL_GetTick() > 7000 && do_save) {
+        do_save = 0;
       }
     }
   }

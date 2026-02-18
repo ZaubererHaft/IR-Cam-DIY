@@ -133,6 +133,7 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 
 /* USER CODE BEGIN EXPORTED_VARIABLES */
 extern W25Q flash;
+extern int32_t do_save;
 
 extern USB_SYNC_Queue usb_synch_queue;
 
@@ -216,13 +217,13 @@ int8_t STORAGE_IsReady_FS(uint8_t lun)
 {
   /* USER CODE BEGIN 4 */
   UNUSED(lun);
+  return USBD_OK;
 
   uint32_t busy;
   W25Q_Busy(&flash, &busy);
   if (busy) {
     return (USBD_BUSY);
   }
-  return (USBD_OK);
   /* USER CODE END 4 */
 }
 

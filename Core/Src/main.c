@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fatfs.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -109,6 +110,7 @@ int main(void)
   MX_TIM2_Init();
   MX_I2C1_Init();
   MX_SPI3_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   application_main();
   /* USER CODE END 2 */
