@@ -15,7 +15,7 @@ extern SPI_HandleTypeDef hspi3;
 #define W25Q_CHIP_ERASE 0x60
 #define W25Q_BUSY 0x05
 
-W25Q_Status SPI_Write(uint8_t *data, uint16_t len);
+W25Q_Status SPI_Write(const uint8_t *data, uint16_t len);
 
 W25Q_Status SPI_Read(uint8_t *data, uint16_t len);
 
@@ -59,6 +59,8 @@ W25Q_Status W25Q_Init(W25Q *flash, const W25QInitParams *params) {
 }
 
 W25Q_Status W25Q_Reset(const W25Q *flash) {
+    UNUSED(flash);
+
     uint8_t tData[2] = {W25Q_CMD_ENABLE_RESET, W25Q_CMD_RESET};
 
     csLOW();
@@ -70,8 +72,10 @@ W25Q_Status W25Q_Reset(const W25Q *flash) {
 }
 
 W25Q_Status W25Q_ReadID(const W25Q *flash, uint32_t *out_id) {
+    UNUSED(flash);
+
     W25Q_Status status = W25Q_OK;
-    uint8_t cmd = W25Q_CMD_READ_ID;
+    const uint8_t cmd = W25Q_CMD_READ_ID;
 
     csLOW();
     status |= SPI_Write(&cmd, 1);
@@ -85,8 +89,8 @@ W25Q_Status W25Q_ReadID(const W25Q *flash, uint32_t *out_id) {
     return status;
 }
 
-W25Q_Status W25Q_do_read(const W25Q *flash, uint32_t address_to_read, uint32_t size, uint8_t *buffer,
-                         uint32_t mode) {
+W25Q_Status W25Q_do_read(const W25Q *flash, const uint32_t address_to_read, const uint32_t size, uint8_t *buffer,
+                         const uint32_t mode) {
     W25Q_Status status = W25Q_OK;
 
     if (address_to_read + size > flash->flash_size_bytes) {
@@ -102,16 +106,16 @@ W25Q_Status W25Q_do_read(const W25Q *flash, uint32_t address_to_read, uint32_t s
     return status;
 }
 
-W25Q_Status W25Q_FastRead(const W25Q *flash, uint32_t address, uint32_t size, uint8_t *buffer) {
+W25Q_Status W25Q_FastRead(const W25Q *flash, const uint32_t address, const uint32_t size, uint8_t *buffer) {
     return W25Q_do_read(flash, address, size, buffer, W25Q_ENABLE_FAST_READ);
 }
 
-W25Q_Status W25Q_Read(const W25Q *flash, uint32_t address, uint32_t size, uint8_t *buffer) {
+W25Q_Status W25Q_Read(const W25Q *flash, const uint32_t address, const uint32_t size, uint8_t *buffer) {
     return W25Q_do_read(flash, address, size, buffer, W25Q_ENABLE_READ);
 }
 
 
-W25Q_Status do_write_page(const W25Q *flash, uint32_t page, uint8_t *data) {
+W25Q_Status do_write_page(const W25Q *flash, const uint32_t page, const uint8_t *data) {
     W25Q_Status status = write_enable();
     uint32_t cmd = __REV(page * flash->page_size_byte) | W25Q_PAGE_PROGRAM;
 
@@ -171,6 +175,8 @@ W25Q_Status W25Q_Write(const W25Q *flash, const uint32_t address, const uint8_t 
 }
 
 W25Q_Status W25Q_ChipErase(const W25Q *flash) {
+    UNUSED(flash);
+
     W25Q_Status status = write_enable();
 
     csLOW();
@@ -185,6 +191,8 @@ W25Q_Status W25Q_ChipErase(const W25Q *flash) {
 }
 
 W25Q_Status W25Q_Busy(const W25Q *flash, uint32_t *is_busy) {
+    UNUSED(flash);
+
     uint32_t cmd = W25Q_BUSY;
 
     uint8_t busy;
@@ -201,13 +209,13 @@ W25Q_Status W25Q_Busy(const W25Q *flash, uint32_t *is_busy) {
     return status;
 }
 
-W25Q_Status W25Q_EraseSector(const W25Q *flash, uint32_t sector) {
+W25Q_Status W25Q_EraseSector(const W25Q *flash, const uint32_t sector) {
     W25Q_Status status = W25Q_OK;
 
     if (sector > flash->sectors) {
         status = W25Q_INVALID_SECTOR;
     } else {
-        uint32_t address_to_delete = sector * flash->sector_size_byte;
+        const uint32_t address_to_delete = sector * flash->sector_size_byte;
         uint32_t cmd = __REV(address_to_delete) | W25Q_ERASE_SECTOR;
 
         status |= write_enable();
@@ -229,7 +237,7 @@ void csHIGH(void) {
     HAL_GPIO_WritePin(FLASH_CS_GPIO_Port, FLASH_CS_Pin, GPIO_PIN_SET);
 }
 
-W25Q_Status SPI_Write(uint8_t *data, uint16_t len) {
+W25Q_Status SPI_Write(const uint8_t *data, const uint16_t len) {
     if (HAL_SPI_Transmit(&hspi3, data, len, 2000) == HAL_OK) {
         return W25Q_OK;
     }
@@ -237,7 +245,7 @@ W25Q_Status SPI_Write(uint8_t *data, uint16_t len) {
     return W25Q_SPI_COMM_ERROR;
 }
 
-W25Q_Status SPI_Read(uint8_t *data, uint16_t len) {
+W25Q_Status SPI_Read(uint8_t *data, const uint16_t len) {
     if (HAL_SPI_Receive(&hspi3, data, len, 5000) == HAL_OK) {
         return W25Q_OK;
     }
@@ -251,7 +259,7 @@ W25Q_Status SPI_Read(uint8_t *data, uint16_t len) {
 W25Q_Status write_enable(void) {
     uint8_t tData = W25Q_ENABLE_WRITE;
     csLOW();
-    W25Q_Status status = SPI_Write(&tData, 1);
+    const W25Q_Status status = SPI_Write(&tData, 1);
     csHIGH();
 
     return status;
@@ -261,16 +269,16 @@ W25Q_Status write_enable(void) {
  *  Write Disable must be called before every page program
  */
 W25Q_Status write_disable(void) {
-    uint8_t tData = W25Q_DISABLE_WRITE;
+    const uint8_t tData = W25Q_DISABLE_WRITE;
     csLOW();
-    W25Q_Status status = SPI_Write(&tData, 1);
+    const W25Q_Status status = SPI_Write(&tData, 1);
     csHIGH();
 
     return status;
 }
 
-uint32_t bytes_to_write(const W25Q *flash, uint32_t size, uint16_t offset) {
-    if ((size + offset) < flash->page_size_byte) {
+uint32_t bytes_to_write(const W25Q *flash, const uint32_t size, const uint16_t offset) {
+    if (size + offset < flash->page_size_byte) {
         return size;
     }
 
