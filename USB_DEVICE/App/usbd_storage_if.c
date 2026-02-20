@@ -224,6 +224,8 @@ int8_t STORAGE_IsReady_FS(uint8_t lun)
   if (busy) {
     return (USBD_BUSY);
   }
+
+  return USBD_OK;
   /* USER CODE END 4 */
 }
 

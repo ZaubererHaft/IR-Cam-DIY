@@ -27,85 +27,79 @@
 #define	 RefreshRate FPS16HZ
 #define  TA_SHIFT 8 //Default shift for MLX90640 in open air
 
+extern I2C_HandleTypeDef hi2c1;
 
 static paramsMLX90640 mlxParams;
 
-static uint16_t frame_1[834];
-static uint16_t frame_2[834];
+static uint16_t ir_buffer_1[834];
+static uint16_t ir_buffer_2[834];
 
-static uint16_t *data_frame = frame_2;
-static uint16_t *display_frame = frame_1;
-volatile int new_data_available = 0;
-static uint16_t eeMLX90640[832];
+static uint16_t *data_frame = ir_buffer_2;
+static uint16_t *display_frame = ir_buffer_1;
 
 static float image[32 * 24];
 static float emissivity = 0.95f;
 static int mlx_status;
 
-volatile uint8_t SPI2_TX_completed_flag = 1; //flag indicating finish of SPI transmission
+static uint8_t sector_backup[4096] = {0};
 
-extern I2C_HandleTypeDef hi2c1;
+volatile int new_ir_data_available = 0;
+volatile uint8_t SPI2_TX_completed_flag = 1;
 
-void MLX90640_Init(void) {
+USB_SYNC_Queue usb_synch_queue;
+W25Q flash;
+
+int32_t MLX90640_Init(void) {
+  uint16_t eeMLX90640[832];
+
   mlx_status |= MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
-  if (mlx_status != 0) {
-    Error_Handler();
+
+  if (mlx_status == 0) {
+    mlx_status |= MLX90640_SetChessMode(MLX90640_ADDR);
   }
-  mlx_status |= MLX90640_SetChessMode(MLX90640_ADDR);
-  if (mlx_status != 0) {
-    Error_Handler();
+  if (mlx_status == 0) {
+    mlx_status |= MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
   }
-  mlx_status |= MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
-  if (mlx_status != 0) {
-    Error_Handler();
+  if (mlx_status == 0) {
+    mlx_status |= MLX90640_ExtractParameters(eeMLX90640, &mlxParams);
   }
-  mlx_status |= MLX90640_ExtractParameters(eeMLX90640, &mlxParams);
-  if (mlx_status != 0) {
-    Error_Handler();
-  }
+
+  return mlx_status;
 }
 
-int MLX90640_ReadAndDisplay(void) {
-  if (new_data_available) {
-    new_data_available = 0;
+int32_t MLX90640_ReadAndDisplay(void) {
+  int32_t status = 0;
 
-    MLX90640_CompleteFrameDataAsync(MLX90640_ADDR, data_frame);
+  if (new_ir_data_available) {
+    new_ir_data_available = 0;
+
+    status = MLX90640_CompleteFrameDataAsync(MLX90640_ADDR, data_frame);
     uint16_t *tmp = display_frame;
     display_frame = data_frame;
     data_frame = tmp;
 
-    MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
+    status |= MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
     float Ta = MLX90640_GetTa(display_frame, &mlxParams);
-    float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
+    float tr = Ta - TA_SHIFT;
     MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, image, 0);
-
-    return 1;
   }
 
-  return 0;
+  return status;
 }
 
-void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-  if (hi2c == &hi2c1) {
-    new_data_available = 1;
-  }
-}
 
 void redraw_ir_image() {
   for (int pixelNumber = 0; pixelNumber < 768; pixelNumber++) {
-    int row = pixelNumber >> 5; // pixelNumber / 32
-    int col = pixelNumber & 31; // pixelNumber % 32
+    int row = pixelNumber >> 5;
+    int col = pixelNumber & 31;
 
     ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size,
                            TempConverter(image[pixelNumber]));
   }
 }
 
-uint8_t sector_backup[4096] = {0};
-USB_SYNC_Queue usb_synch_queue;
-W25Q flash;
 
-void application_main(void) {
+int32_t Task_Init() {
   W25QInitParams params = {
     .page_size_byte = 256,
     .pages = 32768,
@@ -114,57 +108,76 @@ void application_main(void) {
     .pages_per_blocks_large = 256
   };
 
-  W25Q_Init(&flash, &params);
-  W25Q_Reset(&flash);
-
-  uint32_t ID;
-  W25Q_ReadID(&flash, &ID);
+  int32_t status = W25Q_Init(&flash, &params);
+  status |= W25Q_Reset(&flash);
 
   UserInterface_Init();
-  FileSystem_Init();
-
-        FileSystem_WriteBitmap(image, 32 * 24);
-
+  status |= FileSystem_Init();
+  status |= FileSystem_WriteBitmap(image, 32 * 24);
   MX_USB_DEVICE_Init();
 
-  MLX90640_Init();
-  int status = MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
-  if (status != 0) {
+  status |= MLX90640_Init();
+  status |= MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
+
+  return status;
+}
+
+int32_t Task_USB_Sync() {
+  int32_t status = 0;
+  USB_SYNC *synch = USB_SYNC_Head(&usb_synch_queue);
+
+  if (synch != NULL) {
+    status |= W25Q_Write(&flash, synch->address, (uint8_t *) synch->USB_BlockBuffer,
+                         sizeof(synch->USB_BlockBuffer), sector_backup);
+  }
+
+  return status;
+}
+
+int32_t Task_ReadIRData() {
+  if (!UserInterface_ShowMenu()) {
+    MLX90640_ReadAndDisplay();
+  }
+
+  return 0;
+}
+
+int32_t Task_Draw() {
+  UserInterface_Draw();
+
+  if (UserInterface_NeedsIRImageRedraw()) {
+    redraw_ir_image();
+    UserInterface_IRImageRedrawn();
+  }
+
+  return 0;
+}
+
+void application_main(void) {
+  if (Task_Init() != 0) {
     Error_Handler();
   }
 
-
-
-  int32_t do_save = 1;
   while (1) {
-    USB_SYNC *synch = USB_SYNC_Head(&usb_synch_queue);
-    if (synch != NULL) {
-      W25Q_Status flash_status = W25Q_Write(&flash, synch->address, (uint8_t *) synch->USB_BlockBuffer,
-                                            sizeof(synch->USB_BlockBuffer), sector_backup);
-      if (flash_status != W25Q_OK) {
-        Error_Handler();
-      } else {
-        USB_SYNC_Head_DeallocateHead(&usb_synch_queue);
-      }
-    } else {
-      if (!UserInterface_ShowMenu()) {
-        MLX90640_ReadAndDisplay();
-      }
-
-      UserInterface_Draw();
-
-      if (UserInterface_NeedsIRImageRedraw()) {
-        redraw_ir_image();
-        UserInterface_IRImageRedrawn();
-      }
-
-      if (HAL_GetTick() > 7000 && do_save) {
-        do_save = 0;
-      }
+    if (Task_USB_Sync() != 0) {
+      Error_Handler();
+    }
+    if (Task_ReadIRData() != 0) {
+      Error_Handler();
+    }
+    if (Task_Draw() != 0) {
+      Error_Handler();
     }
   }
 }
 
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
   SPI2_TX_completed_flag = 1;
+}
+
+
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+  if (hi2c == &hi2c1) {
+    new_ir_data_available = 1;
+  }
 }

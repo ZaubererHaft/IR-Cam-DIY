@@ -44,7 +44,7 @@
 /* Disk status */
 static volatile DSTATUS Stat = STA_NOINIT;
 extern W25Q flash;
-extern uint8_t sector_backup[];
+static uint8_t sector_backup[4096] = {0};
 /* USER CODE END DECL */
 
 /* Private function prototypes -----------------------------------------------*/
