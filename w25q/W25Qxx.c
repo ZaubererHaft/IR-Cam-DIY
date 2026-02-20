@@ -254,7 +254,6 @@ W25Q_Status write_enable(void) {
     W25Q_Status status = SPI_Write(&tData, 1);
     csHIGH();
 
-    HAL_Delay(5);
     return status;
 }
 
@@ -267,7 +266,6 @@ W25Q_Status write_disable(void) {
     W25Q_Status status = SPI_Write(&tData, 1);
     csHIGH();
 
-    HAL_Delay(5);
     return status;
 }
 
