@@ -29,11 +29,10 @@ void csLOW(void);
 
 void csHIGH(void);
 
-
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
-W25Q_Status W25Q_WaitForReady(const W25Q *flash) {
+W25Q_Status wait_for_ready(const W25Q *flash) {
 
     W25Q_Status status;
     uint32_t busy;
@@ -78,7 +77,7 @@ W25Q_Status W25Q_Reset(const W25Q *flash) {
     W25Q_Status status = SPI_Write(tData, 2);
     csHIGH();
 
-    status |= W25Q_WaitForReady(flash);
+    status |= wait_for_ready(flash);
     return status;
 }
 
@@ -100,7 +99,7 @@ W25Q_Status W25Q_ReadID(const W25Q *flash, uint32_t *out_id) {
     return status;
 }
 
-W25Q_Status W25Q_do_read(const W25Q *flash, const uint32_t address_to_read, const uint32_t size, uint8_t *buffer,
+W25Q_Status do_read(const W25Q *flash, const uint32_t address_to_read, const uint32_t size, uint8_t *buffer,
                          const uint32_t mode) {
     W25Q_Status status = W25Q_OK;
 
@@ -118,11 +117,11 @@ W25Q_Status W25Q_do_read(const W25Q *flash, const uint32_t address_to_read, cons
 }
 
 W25Q_Status W25Q_FastRead(const W25Q *flash, const uint32_t address, const uint32_t size, uint8_t *buffer) {
-    return W25Q_do_read(flash, address, size, buffer, W25Q_ENABLE_FAST_READ);
+    return do_read(flash, address, size, buffer, W25Q_ENABLE_FAST_READ);
 }
 
 W25Q_Status W25Q_Read(const W25Q *flash, const uint32_t address, const uint32_t size, uint8_t *buffer) {
-    return W25Q_do_read(flash, address, size, buffer, W25Q_ENABLE_READ);
+    return do_read(flash, address, size, buffer, W25Q_ENABLE_READ);
 }
 
 
@@ -135,7 +134,7 @@ W25Q_Status do_write_page(const W25Q *flash, const uint32_t page, const uint8_t 
     status |= SPI_Write(&data[0], flash->page_size_byte);
     csHIGH();
 
-    status |= W25Q_WaitForReady(flash);
+    status |= wait_for_ready(flash);
     return status;
 }
 
@@ -194,7 +193,7 @@ W25Q_Status W25Q_ChipErase(const W25Q *flash) {
     status |= SPI_Write((uint8_t *) &cmd, 1);
     csHIGH();
 
-    status |= W25Q_WaitForReady(flash);
+    status |= wait_for_ready(flash);
     status |= write_disable();
 
     return status;
@@ -233,7 +232,7 @@ W25Q_Status W25Q_EraseSector(const W25Q *flash, const uint32_t sector) {
         status |= SPI_Write((uint8_t *) &cmd, 4);
         csHIGH();
 
-        status |= W25Q_WaitForReady(flash);
+        status |= wait_for_ready(flash);
         status |= write_disable();
     }
 
