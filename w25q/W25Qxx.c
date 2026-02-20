@@ -33,6 +33,17 @@ void csHIGH(void);
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
+W25Q_Status W25Q_WaitForReady(const W25Q *flash) {
+
+    W25Q_Status status;
+    uint32_t busy;
+    do  {
+        status = W25Q_Busy(flash, &busy);
+    }
+    while (busy && status == W25Q_OK);
+    return status;
+}
+
 W25Q_Status W25Q_Init(W25Q *flash, const W25QInitParams *params) {
     flash->pages = params->pages;
     flash->page_size_byte = params->page_size_byte;
@@ -61,13 +72,13 @@ W25Q_Status W25Q_Init(W25Q *flash, const W25QInitParams *params) {
 W25Q_Status W25Q_Reset(const W25Q *flash) {
     UNUSED(flash);
 
-    uint8_t tData[2] = {W25Q_CMD_ENABLE_RESET, W25Q_CMD_RESET};
+    const uint8_t tData[2] = {W25Q_CMD_ENABLE_RESET, W25Q_CMD_RESET};
 
     csLOW();
-    const W25Q_Status status = SPI_Write(tData, 2);
+    W25Q_Status status = SPI_Write(tData, 2);
     csHIGH();
-    HAL_Delay(1);
 
+    status |= W25Q_WaitForReady(flash);
     return status;
 }
 
@@ -124,8 +135,7 @@ W25Q_Status do_write_page(const W25Q *flash, const uint32_t page, const uint8_t 
     status |= SPI_Write(&data[0], flash->page_size_byte);
     csHIGH();
 
-    HAL_Delay(5);
-
+    status |= W25Q_WaitForReady(flash);
     return status;
 }
 
@@ -184,7 +194,7 @@ W25Q_Status W25Q_ChipErase(const W25Q *flash) {
     status |= SPI_Write((uint8_t *) &cmd, 1);
     csHIGH();
 
-    HAL_Delay(20 * 1000);
+    status |= W25Q_WaitForReady(flash);
     status |= write_disable();
 
     return status;
@@ -222,7 +232,8 @@ W25Q_Status W25Q_EraseSector(const W25Q *flash, const uint32_t sector) {
         csLOW();
         status |= SPI_Write((uint8_t *) &cmd, 4);
         csHIGH();
-        HAL_Delay(450); // 450ms delay for sector erase
+
+        status |= W25Q_WaitForReady(flash);
         status |= write_disable();
     }
 
@@ -257,7 +268,7 @@ W25Q_Status SPI_Read(uint8_t *data, const uint16_t len) {
  *  Write Enable must be called before every page program
  */
 W25Q_Status write_enable(void) {
-    uint8_t tData = W25Q_ENABLE_WRITE;
+    const uint8_t tData = W25Q_ENABLE_WRITE;
     csLOW();
     const W25Q_Status status = SPI_Write(&tData, 1);
     csHIGH();
