@@ -165,12 +165,17 @@ int32_t UserInterface_ShowMenu(void) {
   return menu_show;
 }
 
-int32_t UserInterface_NeedsIRImageRedraw() {
-  return do_redraw_ir_image;
-}
+void UserInterface_RedrawIRImageIfNecessary(float *image) {
+  if (do_redraw_ir_image) {
+    for (int pixelNumber = 0; pixelNumber < 768; pixelNumber++) {
+      int row = pixelNumber >> 5;
+      int col = pixelNumber & 31;
 
-void UserInterface_IRImageRedrawn(void) {
-  do_redraw_ir_image = 0;
+      ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size,
+                             TempConverter(image[pixelNumber]));
+    }
+    do_redraw_ir_image = 0;
+  }
 }
 
 void UserInterface_ReadStick() {
@@ -206,8 +211,7 @@ void UserInterface_Draw(void) {
   if (menu_show) {
     UserInterface_ReadStick();
     DrawMenu();
-  }
-  else {
+  } else {
     frames++;
   }
 }

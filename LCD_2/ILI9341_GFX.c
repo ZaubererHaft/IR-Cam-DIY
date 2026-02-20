@@ -48,7 +48,11 @@
 #define LCD_WIDTH 320
 #define LCD_HEIGHT 240
 
-extern uint8_t SPI2_TX_completed_flag;
+volatile uint8_t SPI2_TX_completed_flag;
+
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
+	SPI2_TX_completed_flag = 1;
+}
 
 const GFXfont *gfxFont = NULL;
 int32_t max_font_height;
