@@ -3,14 +3,22 @@
 
 #include <stdint.h>
 
+/**
+ * Return status codes of  the driver. There can be multiple error codes at once (via masking with OR).
+ * E.g., the code 0b110 means that there is an SPI error together with an invalid address.
+ */
 typedef enum W25Q_Status_ {
-    W25Q_OK = 0x00000000,
-    W25Q_NOT_SUPPORTED = 0x00000001,
-    W25Q_SPI_COMM_ERROR = 0x00000002,
-    W25Q_INVALID_ADDRESS = 0x00000004,
-    W25Q_INVALID_SECTOR = 0x00000008,
+    W25Q_OK = 0b0,
+    W25Q_NOT_SUPPORTED = 0b10,
+    W25Q_SPI_COMM_ERROR = 0b100,
+    W25Q_INVALID_ADDRESS = 0b1000,
+    W25Q_INVALID_SECTOR = 0b10000,
 } W25Q_Status;
 
+/**
+ * Flash struct object. Holds a full description of the flash's organization such as the number of pages, sectors and blocks.
+ * The values are calculated in W25Q_Init. Do not modify them.
+ */
 typedef struct W25Q_ {
     uint32_t flash_size_bytes;
     uint32_t pages;
@@ -26,6 +34,11 @@ typedef struct W25Q_ {
     uint32_t pages_per_blocks_large;
 } W25Q;
 
+/**
+ * The parameters describing the flash (from the data sheet). They depend on the flash model.
+ * W25Q64FV, e.g., has 32768 pages, each with a size of 256 byte. 16 pages form a sector and either 256 or 128 pages
+ * form a large or small block, respectively.
+ */
 typedef struct W25QInitParams_ {
     uint32_t pages;
     uint32_t page_size_byte;
@@ -34,11 +47,33 @@ typedef struct W25QInitParams_ {
     uint32_t pages_per_blocks_large;
 } W25QInitParams;
 
+/**
+ * The JEDEC identifier of a flash (capacity, memory type and manufacturer).
+ */
+typedef union Q25QJEDECIdentifier_ {
+    struct {
+        uint8_t capacity;
+        uint8_t memory_type;
+        uint8_t manufacturer;
+    };
+    uint32_t jedec_identifier;
+} W25QJEDECIdentifier;
+
+/**
+ * Initializes the flash with the given parameters. This does not build up a communication, yet. Instead, the flash's parameters
+ * are calculated. Note that flashes with more blocks than W25Q_NUMER_OF_SMALL_BLOCKS_UNSUPPORTED are not supported.
+ */
 W25Q_Status W25Q_Init(W25Q *flash, const W25QInitParams *params);
 
+/**
+ * Sends a reset signal to the flash. Must be called before other operations.
+ */
 W25Q_Status W25Q_Reset(const W25Q *flash);
 
-W25Q_Status W25Q_ReadID(const W25Q *flash, uint32_t *out_id);
+/**
+ * Reads the JEDEC identifier of this flash, consisting of manufacturer, memory type and capacity.
+ */
+W25Q_Status W25Q_ReadJEDECIdentifier(const W25Q *flash, W25QJEDECIdentifier *out_id);
 
 W25Q_Status W25Q_Read(const W25Q *flash, uint32_t address, uint32_t size, uint8_t *buffer);
 
