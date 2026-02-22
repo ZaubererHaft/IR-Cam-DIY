@@ -105,14 +105,13 @@ W25Q_Status W25Q_ReadJEDECIdentifier(const W25Q *flash, W25QJEDECIdentifier *out
     return status;
 }
 
-W25Q_Status do_read(const W25Q *flash, const uint32_t address_to_read, const uint32_t size, uint8_t *buffer,
-                         const uint32_t mode) {
+W25Q_Status W25Q_Read(const W25Q *flash, const uint32_t address, const uint32_t size, uint8_t *buffer) {
     W25Q_Status status = W25Q_OK;
 
-    if (address_to_read + size > flash->flash_size_bytes) {
+    if (address + size > flash->flash_size_bytes) {
         status = W25Q_INVALID_ADDRESS;
     } else {
-        const uint32_t data = __REV(address_to_read) | mode;
+        const uint32_t data = __REV(address) | W25Q_ENABLE_READ;
         cs_LOW();
         status |= write_SPI((const uint8_t *) &data, sizeof(data));
         status |= read_SPI(buffer, size);
@@ -120,14 +119,6 @@ W25Q_Status do_read(const W25Q *flash, const uint32_t address_to_read, const uin
     }
 
     return status;
-}
-
-W25Q_Status W25Q_FastRead(const W25Q *flash, const uint32_t address, const uint32_t size, uint8_t *buffer) {
-    return do_read(flash, address, size, buffer, W25Q_ENABLE_FAST_READ);
-}
-
-W25Q_Status W25Q_Read(const W25Q *flash, const uint32_t address, const uint32_t size, uint8_t *buffer) {
-    return do_read(flash, address, size, buffer, W25Q_ENABLE_READ);
 }
 
 

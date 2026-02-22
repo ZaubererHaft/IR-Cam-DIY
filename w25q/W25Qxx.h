@@ -75,17 +75,32 @@ W25Q_Status W25Q_Reset(const W25Q *flash);
  */
 W25Q_Status W25Q_ReadJEDECIdentifier(const W25Q *flash, W25QJEDECIdentifier *out_id);
 
+/**
+ * Reads the data from the provided address and length into the buffer.
+ */
 W25Q_Status W25Q_Read(const W25Q *flash, uint32_t address, uint32_t size, uint8_t *buffer);
 
-W25Q_Status W25Q_FastRead(const W25Q *flash, uint32_t address, uint32_t size, uint8_t *buffer);
-
+/**
+ * Erases the given sector (smallest entity that can be deleted)
+ */
 W25Q_Status W25Q_EraseSector(const W25Q *flash, uint32_t sector);
 
+/**
+ * Generic write function. Writes size bytes from data at the given address.
+ * The address can be arbitrary. If necessary, the affected section will be deleted. Note that section_buffer
+ * must therefore be of the size sector_size_byte.
+ */
 W25Q_Status W25Q_Write(const W25Q *flash, uint32_t address, const uint8_t *data, uint32_t size,
                             uint8_t *sector_backup);
 
+/**
+ * Full chip erase. Long-running function, use with care.
+ */
 W25Q_Status W25Q_ChipErase(const W25Q *flash);
 
+/**
+ * Checks if the flash is currently busy.
+ */
 W25Q_Status W25Q_Busy(const W25Q *flash, uint32_t *is_busy);
 
 
