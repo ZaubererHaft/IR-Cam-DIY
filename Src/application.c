@@ -46,7 +46,7 @@ void Task_Init() {
   status |= W25Q_Reset(&flash);
 
   UserInterface_Init();
-  status |= FileSystem_Init();
+  status |= FileSystem_Init(sector_backup);
   status |= FileSystem_WriteBitmap(MLX90640_GetIRImage(), 32 * 24);
   MX_USB_DEVICE_Init();
   status |= MLX90640_Init();

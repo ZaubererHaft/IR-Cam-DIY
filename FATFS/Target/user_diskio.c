@@ -170,6 +170,18 @@ DRESULT USER_ioctl (
   DRESULT res = RES_ERROR;
 
   switch (cmd) {
+    case CTRL_SYNC:
+      // Warte, bis der W25Q nicht mehr beschäftigt ist (WIP - Write In Progress Bit)
+      uint32_t busy = 0;
+
+      do {
+        W25Q_Busy(&flash, &busy);
+      }
+      while (busy);
+
+      res = RES_OK;
+      break;
+
     case GET_SECTOR_SIZE:
       *(WORD*)buff = flash.sector_size_byte;
       res = RES_OK;
@@ -177,6 +189,7 @@ DRESULT USER_ioctl (
 
     case GET_SECTOR_COUNT:
       *(DWORD*)buff = flash.sectors;
+      res = RES_OK;
       break;
 
     case GET_BLOCK_SIZE:

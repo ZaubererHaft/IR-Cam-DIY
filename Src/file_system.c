@@ -5,13 +5,18 @@
 static FATFS fs;
 static uint8_t buffer[(32 * 24 * 2) + 14 + 40];
 
-int32_t FileSystem_Init() {
-    FRESULT res;
-    return f_mount(&fs, "", 0);
+int32_t FileSystem_Init(uint8_t *buffer) {
+    FRESULT res = f_mount(&fs, "", 1);
+
+    if (res == FR_OK) {
+        return 0;
+    }
+
+    res = f_mkfs("0:", FM_ANY | FM_SFD, 4096, buffer, 4096);
+    return res;
 }
 
 int32_t FileSystem_WriteBitmap(float *image, uint32_t size) {
-
     buffer[0] = 'B';
     buffer[1] = 'M';
 
@@ -123,8 +128,8 @@ int32_t FileSystem_WriteBitmap(float *image, uint32_t size) {
 
     UINT written;
     if (res == FR_OK) {
-      f_write(&fil, buffer, sizeof(buffer), &written);
-      f_close(&fil);
+        f_write(&fil, buffer, sizeof(buffer), &written);
+        f_close(&fil);
     }
 
     return 0;
