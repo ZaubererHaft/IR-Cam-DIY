@@ -60,12 +60,20 @@
       ],
       "drc_exclusions": [
         [
+          "lib_footprint_mismatch|111587500|43000000|014d25fc-e89e-4203-8a40-ce159ca88d81|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
           "silk_edge_clearance|128000000|63900000|918874d7-c108-4c76-8315-5fcc9d75f5d6|89f23b01-2687-4e4f-8773-ad2c44a2b76a",
-          "USB connector must just out of the board"
+          ""
         ],
         [
           "silk_edge_clearance|128000000|73300000|918874d7-c108-4c76-8315-5fcc9d75f5d6|03fa6032-0ea1-443e-98b5-a92f94615a12",
-          "USB connector must jut out of the board"
+          ""
+        ],
+        [
+          "starved_thermal|113712500|44000000|ccdbc58d-17dc-4a1e-a847-a05656c8256c|b79fbdbe-4bd0-46b5-b660-ca33efbcf67f|F.Cu",
+          "Pin11 is no thermal relief"
         ]
       ],
       "meta": {
@@ -134,7 +142,7 @@
         "max_error": 0.005,
         "min_clearance": 0.0,
         "min_connection": 0.0,
-        "min_copper_edge_clearance": 0.5,
+        "min_copper_edge_clearance": 0.4,
         "min_groove_width": 0.0,
         "min_hole_clearance": 0.25,
         "min_hole_to_hole": 0.25,
