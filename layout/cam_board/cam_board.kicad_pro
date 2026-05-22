@@ -48,7 +48,7 @@
         "silk_text_thickness": 0.1,
         "silk_text_upright": false,
         "zones": {
-          "min_clearance": 0.2
+          "min_clearance": 0.0
         }
       },
       "diff_pair_dimensions": [
@@ -70,10 +70,6 @@
         [
           "silk_edge_clearance|128000000|73300000|918874d7-c108-4c76-8315-5fcc9d75f5d6|03fa6032-0ea1-443e-98b5-a92f94615a12",
           ""
-        ],
-        [
-          "starved_thermal|113712500|44000000|ccdbc58d-17dc-4a1e-a847-a05656c8256c|b79fbdbe-4bd0-46b5-b660-ca33efbcf67f|F.Cu",
-          "Pin11 is no thermal relief"
         ]
       ],
       "meta": {
