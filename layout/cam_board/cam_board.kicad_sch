@@ -8077,12 +8077,6 @@
 		(uuid "dea8893d-cd7a-4420-b817-c182ff211d62")
 	)
 	(junction
-		(at 238.76 34.29)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "e0844020-20f5-4fe4-88a3-620940a527af")
-	)
-	(junction
 		(at 270.51 59.69)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -8099,6 +8093,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "ec8a7af0-7803-420c-b345-b43962a97a50")
+	)
+	(junction
+		(at 238.76 34.29)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "ee1f0166-c9b7-4bde-8df1-71893746e0a8")
 	)
 	(junction
 		(at 262.89 115.57)
@@ -8959,6 +8959,16 @@
 			(type default)
 		)
 		(uuid "41d99bdb-8607-473f-804c-85e0631da88a")
+	)
+	(wire
+		(pts
+			(xy 238.76 41.91) (xy 238.76 43.18)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "42273a3e-fedc-48e2-b48a-cfb1c22f5d93")
 	)
 	(wire
 		(pts
@@ -10099,16 +10109,6 @@
 			(type default)
 		)
 		(uuid "87d93b6c-379e-4b1e-9803-21222db0b7ba")
-	)
-	(wire
-		(pts
-			(xy 238.76 34.29) (xy 238.76 43.18)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8854c3a3-d79c-41f3-add2-18f1b9b9c304")
 	)
 	(wire
 		(pts
@@ -13395,6 +13395,73 @@
 			(project "cam_board"
 				(path "/eee23683-93c4-45fa-9c00-e358d0d25f58"
 					(reference "SW1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Jumper:SolderJumper_2_Open")
+		(at 238.76 38.1 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "0ae22bd2-bd0f-44ef-a9ae-e50d3eb166c6")
+		(property "Reference" "JP7"
+			(at 238.506 41.148 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "Battery Bypass 2"
+			(at 241.046 30.734 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm"
+			(at 238.76 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 238.76 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Solder Jumper, 2-pole, open"
+			(at 238.76 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "5eebd3a3-b16b-4d04-99ef-f24b5ac2b586")
+		)
+		(pin "2"
+			(uuid "8d61d7ff-cb08-4273-8a38-e491c93ec997")
+		)
+		(instances
+			(project "cam_board"
+				(path "/eee23683-93c4-45fa-9c00-e358d0d25f58"
+					(reference "JP7")
 					(unit 1)
 				)
 			)
