@@ -10,3 +10,6 @@ cam_board-backups
 *.lck
 *.kicad_prl
 *.pdf
+*-bak
+*.csv#
+*.plt
