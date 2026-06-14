@@ -10134,7 +10134,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 68.58) (xy 182.88 78.74)
+			(xy 181.61 68.58) (xy 181.61 78.74)
 		)
 		(stroke
 			(width 0)
@@ -10544,7 +10544,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 78.74) (xy 186.69 78.74)
+			(xy 181.61 78.74) (xy 186.69 78.74)
 		)
 		(stroke
 			(width 0)
@@ -11601,6 +11601,16 @@
 			(type default)
 		)
 		(uuid "f71f4e65-dc12-473d-bc6e-8f6a01ec6e95")
+	)
+	(wire
+		(pts
+			(xy 181.61 60.96) (xy 182.88 60.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f73de839-d23a-4af6-95e2-d87f7f2a1ca2")
 	)
 	(wire
 		(pts
@@ -14571,7 +14581,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 182.88 64.77 180)
+		(at 181.61 64.77 180)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -14579,7 +14589,7 @@
 		(dnp no)
 		(uuid "1e654fe1-95d4-4ace-9bfa-0f191d99d9c4")
 		(property "Reference" "R12"
-			(at 182.372 62.992 90)
+			(at 179.832 62.992 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14588,7 +14598,7 @@
 			)
 		)
 		(property "Value" "100k"
-			(at 184.912 62.23 90)
+			(at 183.642 62.23 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14597,7 +14607,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder"
-			(at 184.658 64.77 90)
+			(at 183.388 64.77 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14606,7 +14616,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 182.88 64.77 0)
+			(at 181.61 64.77 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14615,7 +14625,7 @@
 			)
 		)
 		(property "Description" "Resistor"
-			(at 182.88 64.77 0)
+			(at 181.61 64.77 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -17114,7 +17124,7 @@
 		(dnp no)
 		(uuid "6949ff83-4337-4b92-b74c-b72417637272")
 		(property "Reference" "R14"
-			(at 186.944 62.992 90)
+			(at 185.166 62.992 90)
 			(effects
 				(font
 					(size 1.27 1.27)
