@@ -71,7 +71,7 @@ void DrawMenuLine(const char *text, uint16_t line) {
 
 void DrawRecordState(void) {
   if (redraw_record_state) {
-    ILI9341_Draw_Rectangle(lcd_width - pixel_size * 4, 0, pixel_size * 4, pixel_size * 2 + 4, BLACK);
+    ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2 - 4, 0, pixel_size * 4, pixel_size * 2 + 4, BLACK);
 
     if (menu_show) {
       ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2, 0, 4, pixel_size * 2, LIGHTGREY);
@@ -81,6 +81,75 @@ void DrawRecordState(void) {
     }
 
     redraw_record_state = 0;
+  }
+}
+
+uint32_t last_batt = 0;
+uint32_t last_anim_charge = 1;
+GPIO_PinState old_stat1;
+GPIO_PinState old_stat2;
+GPIO_PinState old_npg;
+uint32_t initial = 1;
+
+void DrawBatteryState(void) {
+  if (HAL_GetTick() - last_batt > 1000) {
+
+    // Every second: Translate electrical state to LED state s.t. we can use table 2-1 of the breakout board
+    GPIO_PinState stat1 = !HAL_GPIO_ReadPin(BATTCHARGING_GPIO_Port, BATTCHARGING_Pin);
+    GPIO_PinState stat2 = !HAL_GPIO_ReadPin(BATTFULL_GPIO_Port, BATTFULL_Pin);
+    GPIO_PinState npg = !HAL_GPIO_ReadPin(EXT_POWER_GPIO_Port, EXT_POWER_Pin);
+
+    if (initial || stat1 != old_stat1 || stat2 != old_stat2 || old_npg != npg || (stat1 && !stat2 && npg)) {
+      initial = 0;
+      old_stat1 = stat1;
+      old_stat2 = stat2;
+      old_npg = npg;
+
+      uint32_t x = lcd_width - pixel_size * 6;
+      uint32_t y = 3;
+
+      // clean up
+      ILI9341_Draw_Rectangle(x - 4, 0, 25, pixel_size * 1.5 + 8, BLACK);
+
+      // Battery frame
+      uint16_t battery_bar_color = WHITE;
+      if (!stat1 && stat2 && npg) {
+        //charging complete -> green
+        battery_bar_color = GREEN;
+      }
+
+      ILI9341_Draw_Hollow_Rectangle_Coord(x - 3, 0, x + 18, y + pixel_size * 1.5 + 2, WHITE);
+      ILI9341_Draw_Rectangle(x + 18, y + 1, 3, pixel_size * 1.25, WHITE);
+
+
+      if (stat1 && !stat2 && npg) {
+        // Two bars
+        ILI9341_Draw_Rectangle(x, y, 4, pixel_size * 1.5, battery_bar_color);
+        ILI9341_Draw_Rectangle(x + 6, y, 4, pixel_size * 1.5, battery_bar_color);
+
+        // charge in progress -> blink last bar
+        if (last_anim_charge) {
+          ILI9341_Draw_Rectangle(x + 12, y, 4, pixel_size * 1.5, battery_bar_color);
+          last_anim_charge = 0;
+        } else {
+          ILI9341_Draw_Rectangle(x + 12, y, 4, pixel_size * 1.5, BLACK);
+          last_anim_charge = 1;
+        }
+      }
+      else if (!(stat1 && !stat2 && !npg)){
+        // all other cases than LBO (low battery) -> add bars
+        ILI9341_Draw_Rectangle(x, y, 4, pixel_size * 1.5, battery_bar_color);
+        ILI9341_Draw_Rectangle(x + 6, y, 4, pixel_size * 1.5, battery_bar_color);
+        ILI9341_Draw_Rectangle(x + 12, y, 4, pixel_size * 1.5, battery_bar_color);
+
+        if (stat1 && !stat2 &&! npg) {
+          // No battery -> battery crossed out
+          ILI9341_Draw_Rectangle(x - 4, y + 5, 26, 2, RED);
+        }
+      }
+
+      last_batt = HAL_GetTick();
+    }
   }
 }
 
@@ -147,11 +216,11 @@ void DrawFPS(void) {
   uint32_t count = HAL_GetTick();
 
   if (count - frame_counter >= 1000) {
-    int x = (ir_width + 1) * pixel_size + offset_x;
+    int x = ir_width * pixel_size + offset_x;
     int y = lcd_height - 15;
 
-    char buff[15] = "FPS:    ";
-    ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
+    char buff[15] = "FPS: ";
+    ILI9341_Draw_Rectangle(x, y, 60, 20, BLACK);
 
     itoa((int) frames, &buff[5], 10);
     ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
@@ -205,6 +274,7 @@ void UserInterface_ReadStick() {
 void UserInterface_Draw(void) {
   DrawFPS();
   DrawRecordState();
+  DrawBatteryState();
   DrawHeatmp();
 
 
