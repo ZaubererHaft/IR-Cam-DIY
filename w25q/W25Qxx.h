@@ -15,6 +15,10 @@ typedef enum W25Q_Status_ {
     W25Q_INVALID_SECTOR = 0b10000,
 } W25Q_Status;
 
+typedef void (*GPIO_Function)(uint32_t);
+
+typedef W25Q_Status (*SPI_Function)(uint8_t *, uint16_t);
+
 /**
  * Flash struct object. Holds a full description of the flash's organization such as the number of pages, sectors and blocks.
  * The values are calculated in W25Q_Init. Do not modify them.
@@ -32,6 +36,9 @@ typedef struct W25Q_ {
     uint32_t blocks_large;
     uint32_t block_large_size_byte;
     uint32_t pages_per_blocks_large;
+    GPIO_Function gpio_function;
+    SPI_Function spi_write;
+    SPI_Function spi_read;
 } W25Q;
 
 /**
@@ -45,6 +52,9 @@ typedef struct W25QInitParams_ {
     uint32_t pages_per_sector;
     uint32_t pages_per_blocks_small;
     uint32_t pages_per_blocks_large;
+    GPIO_Function gpio_function;
+    SPI_Function spi_write;
+    SPI_Function spi_read;
 } W25QInitParams;
 
 /**
@@ -92,6 +102,9 @@ W25Q_Status W25Q_EraseSector(const W25Q *flash, uint32_t sector);
  */
 W25Q_Status W25Q_Write(const W25Q *flash, uint32_t address, const uint8_t *data, uint32_t size,
                             uint8_t *sector_backup);
+
+
+W25Q_Status W25Q_WritePage(const W25Q *flash, uint32_t page, const uint8_t *data);
 
 /**
  * Full chip erase. Long-running function, use with care.
