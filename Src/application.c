@@ -82,7 +82,8 @@ void Task_Init() {
 
   UserInterface_Init();
   status |= FileSystem_Init(sector_backup);
-  status |= FileSystem_WriteBitmap(MLX90640_GetIRImage(), 32 * 24, "test2.bmp");
+  //status |= FileSystem_WriteBitmap(MLX90640_GetIRImage(), 32 * 24, "test2.bmp");
+  //status |= FileSystem_WriteBitmap(MLX90640_GetIRImage(), 32 * 24, "test3.bmp");
 
   //status |= MLX90640_Init();
   MX_USB_DEVICE_Init();

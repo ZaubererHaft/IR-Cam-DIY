@@ -217,7 +217,6 @@ int8_t STORAGE_IsReady_FS(uint8_t lun)
 {
   /* USER CODE BEGIN 4 */
   UNUSED(lun);
-  return USBD_OK;
 
   uint32_t busy;
   W25Q_Busy(&flash, &busy);
@@ -239,7 +238,7 @@ int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
   /* USER CODE BEGIN 5 */
   UNUSED(lun);
 
-  return USBD_OK;
+  return USBD_FAIL;
   /* USER CODE END 5 */
 }
 
@@ -259,6 +258,7 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
   UNUSED(blk_addr);
   UNUSED(blk_len);
 
+
   if (USB_SYNC_QueueSize(&usb_synch_queue) > 0) {
     for (int i = 0; i < usb_synch_queue.size; ++i) {
       int32_t index = usb_synch_queue.start + i % USB_SYNC_QUEUE_CAPACITY;
@@ -267,19 +267,19 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 
       if (synch->address == blk_addr * blk_len * flash.sector_size_byte) {
         memcpy(buf, synch->USB_BlockBuffer, blk_len * flash.sector_size_byte);
-        return (USBD_OK);
+        return USBD_OK;
       }
     }
 
 
-    return (USBD_BUSY);
+    return USBD_BUSY;
   }
 
   if (W25Q_Read(&flash, blk_addr * blk_len * flash.sector_size_byte, blk_len * flash.sector_size_byte, buf) == W25Q_OK) {
-    return (USBD_OK);
+    return USBD_OK;
   }
 
-  return (USBD_FAIL);
+  return USBD_FAIL;
   /* USER CODE END 6 */
 }
 
@@ -308,7 +308,7 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
   memcpy(synch_obj->USB_BlockBuffer, buf, blk_len * flash.sector_size_byte);
   synch_obj->address = blk_addr * blk_len * flash.sector_size_byte;
 
-  return (USBD_OK);
+  return USBD_OK;
 
 
   /* USER CODE END 7 */
