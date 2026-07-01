@@ -7,16 +7,20 @@ static uint8_t buffer[(32 * 24 * 2) + 14 + 40];
 
 int32_t FileSystem_Init(uint8_t *buffer) {
     FRESULT res = f_mount(&fs, "", 1);
-
     if (res == FR_OK) {
         return 0;
     }
 
     res = f_mkfs("0:", FM_ANY | FM_SFD, 4096, buffer, 4096);
+
+    if (res == FR_OK) {
+        res = f_mount(&fs, "", 1);
+    }
+
     return res;
 }
 
-int32_t FileSystem_WriteBitmap(float *image, uint32_t size) {
+int32_t FileSystem_WriteBitmap(float *image, uint32_t size, const char *name) {
     buffer[0] = 'B';
     buffer[1] = 'M';
 
@@ -124,7 +128,7 @@ int32_t FileSystem_WriteBitmap(float *image, uint32_t size) {
     }
 
     FIL fil;
-    FRESULT res = f_open(&fil, "test.bmp", FA_CREATE_ALWAYS | FA_WRITE);
+    FRESULT res = f_open(&fil, name, FA_CREATE_ALWAYS | FA_WRITE);
 
     UINT written;
     if (res == FR_OK) {
