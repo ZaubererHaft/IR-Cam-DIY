@@ -431,11 +431,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, USER_LED_Pin|RST_Pin|DC_Pin|CS_Pin
-                          |FLASH_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, USER_LED_Pin|RST_Pin|DC_Pin|CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(BATTCHARGE_GPIO_Port, BATTCHARGE_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, BATTCHARGE_Pin|FLASH_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : USER_LED_Pin RST_Pin DC_Pin CS_Pin */
   GPIO_InitStruct.Pin = USER_LED_Pin|RST_Pin|DC_Pin|CS_Pin;
@@ -453,7 +452,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pins : BATTFULL_Pin BATTCHARGING_Pin EXT_POWER_Pin */
   GPIO_InitStruct.Pin = BATTFULL_Pin|BATTCHARGING_Pin|EXT_POWER_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BATTCHARGE_Pin */
