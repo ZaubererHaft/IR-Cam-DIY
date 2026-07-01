@@ -144,6 +144,11 @@ DRESULT USER_write (
 {
   /* USER CODE BEGIN WRITE */
   /* USER CODE HERE */
+
+  if (count >= 2) {
+    return RES_ERROR;
+  }
+
   if (W25Q_Write(&flash, sector * flash.sector_size_byte, buff, count * flash.sector_size_byte, sector_backup) == W25Q_OK) {
     return RES_OK;
   }
@@ -173,11 +178,12 @@ DRESULT USER_ioctl (
     case CTRL_SYNC:
       // Warte, bis der W25Q nicht mehr beschäftigt ist (WIP - Write In Progress Bit)
       uint32_t busy = 0;
+      W25Q_Status status = W25Q_OK;
 
       do {
-        W25Q_Busy(&flash, &busy);
+        status = W25Q_Busy(&flash, &busy);
       }
-      while (busy);
+      while (busy && status == W25Q_OK);
 
       res = RES_OK;
       break;
