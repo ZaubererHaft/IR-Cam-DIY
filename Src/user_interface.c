@@ -142,8 +142,8 @@ void DrawBatteryState(void) {
         ILI9341_Draw_Rectangle(x + 6, y, 4, pixel_size * 1.5, battery_bar_color);
         ILI9341_Draw_Rectangle(x + 12, y, 4, pixel_size * 1.5, battery_bar_color);
 
-        if (stat1 && !stat2 &&! npg) {
-          // No battery -> battery crossed out
+        if (!stat1 && !stat2 && npg) {
+          // No battery or standby -> battery crossed out
           ILI9341_Draw_Rectangle(x - 4, y + 5, 26, 2, RED);
         }
       }
