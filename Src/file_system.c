@@ -3,7 +3,7 @@
 #include "heatmap.h"
 
 static FATFS fs;
-static uint8_t buffer[(32 * 24 * 2) + 14 + 40];
+static uint8_t buffer[(32 * 24 * 2) + 66];
 
 int32_t FileSystem_Init(uint8_t *buffer) {
     FRESULT res = f_mount(&fs, "", 1);
@@ -124,7 +124,7 @@ int32_t FileSystem_WriteBitmap(float *image, uint32_t size, const char *name) {
     for (int i = 0; i < size; ++i) {
         uint16_t col = TempConverter(image[i]);
         buffer[66 + i * 2] = col & 0xFF;
-        buffer[67 + (i + 1) * 2] = col >> 8;
+        buffer[66 + i * 2 + 1] = col >> 8;
     }
 
     FIL fil;

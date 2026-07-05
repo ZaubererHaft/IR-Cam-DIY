@@ -30,6 +30,7 @@ static float tMaxOld;
 
 float tMin = 15.0f;
 float tMax = 37.0f;
+uint32_t save_image = 0;
 
 uint16_t (*TempConverter)(float) = &TempToMagma565_Fast;
 
@@ -40,6 +41,14 @@ static int32_t menu_redraw = 0;
 static int32_t redraw_heatmap = 0;
 
 extern ADC_HandleTypeDef hadc1;
+
+static uint32_t last_batt = 0;
+static uint32_t last_anim_charge = 1;
+static GPIO_PinState old_stat1;
+static GPIO_PinState old_stat2;
+static GPIO_PinState old_npg;
+static uint32_t initial = 1;
+
 
 void UserInterface_Init(void) {
   ILI9341_Init();
@@ -84,12 +93,6 @@ void DrawRecordState(void) {
   }
 }
 
-uint32_t last_batt = 0;
-uint32_t last_anim_charge = 1;
-GPIO_PinState old_stat1;
-GPIO_PinState old_stat2;
-GPIO_PinState old_npg;
-uint32_t initial = 1;
 
 void DrawBatteryState(void) {
   if (HAL_GetTick() - last_batt > 1000) {
@@ -296,7 +299,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         if (menu_cur_entry == MAIN) {
           if (menu_cursor_Y == 1) {
             menu_cur_entry = SELECT_HEATMAP;
-          } else if (menu_cursor_Y == 5) {
+          }
+          else if (menu_cursor_Y == 3) {
+            save_image = 1;
+          }
+          else if (menu_cursor_Y == 5) {
             menu_show = 0;
             do_redraw_ir_image = 1;
           }

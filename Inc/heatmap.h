@@ -16,4 +16,6 @@ extern uint16_t (*TempConverter)(float);
 extern float tMin;
 extern float tMax;
 
+extern uint32_t save_image;
+
 #endif //CAM_HEATMAP_H
