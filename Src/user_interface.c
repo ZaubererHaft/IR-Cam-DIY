@@ -96,7 +96,6 @@ void DrawRecordState(void) {
 
 void DrawBatteryState(void) {
   if (HAL_GetTick() - last_batt > 1000) {
-
     // Every second: Translate electrical state to LED state s.t. we can use table 2-1 of the breakout board
     GPIO_PinState stat1 = !HAL_GPIO_ReadPin(BATTCHARGING_GPIO_Port, BATTCHARGING_Pin);
     GPIO_PinState stat2 = !HAL_GPIO_ReadPin(BATTFULL_GPIO_Port, BATTFULL_Pin);
@@ -138,8 +137,7 @@ void DrawBatteryState(void) {
           ILI9341_Draw_Rectangle(x + 12, y, 4, pixel_size * 1.5, BLACK);
           last_anim_charge = 1;
         }
-      }
-      else if (!(stat1 && !stat2 && !npg)){
+      } else if (!(stat1 && !stat2 && !npg)) {
         // all other cases than LBO (low battery) -> add bars
         ILI9341_Draw_Rectangle(x, y, 4, pixel_size * 1.5, battery_bar_color);
         ILI9341_Draw_Rectangle(x + 6, y, 4, pixel_size * 1.5, battery_bar_color);
@@ -216,22 +214,25 @@ void DrawHeatmp(void) {
 
 
 void DrawFPS(void) {
-  uint32_t count = HAL_GetTick();
+  if (!menu_show) {
+    uint32_t count = HAL_GetTick();
 
-  if (count - frame_counter >= 1000) {
-    int x = ir_width * pixel_size + offset_x;
-    int y = lcd_height - 15;
+    if (count - frame_counter >= 1000) {
+      int x = ir_width * pixel_size + offset_x;
+      int y = lcd_height - 15;
 
-    char buff[15] = "FPS: ";
-    ILI9341_Draw_Rectangle(x, y, 60, 20, BLACK);
+      char buff[15] = "FPS: ";
+      ILI9341_Draw_Rectangle(x, y, 60, 20, BLACK);
 
-    itoa((int) frames, &buff[5], 10);
-    ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
+      itoa((int) frames, &buff[5], 10);
+      ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
 
-    frame_counter = count;
-    frames = 0;
+      frame_counter = count;
+      frames = 0;
+    }
   }
 }
+
 
 int32_t UserInterface_ShowMenu(void) {
   return menu_show;
@@ -299,11 +300,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         if (menu_cur_entry == MAIN) {
           if (menu_cursor_Y == 1) {
             menu_cur_entry = SELECT_HEATMAP;
-          }
-          else if (menu_cursor_Y == 3) {
+          } else if (menu_cursor_Y == 3) {
             save_image = 1;
-          }
-          else if (menu_cursor_Y == 5) {
+          } else if (menu_cursor_Y == 5) {
             menu_show = 0;
             do_redraw_ir_image = 1;
           }
