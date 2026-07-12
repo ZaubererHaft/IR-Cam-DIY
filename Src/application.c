@@ -27,7 +27,7 @@ void application_main(void) {
 
   uint32_t time = HAL_GetTick();
   while (1) {
-    // Task_ReadIRData();
+    Task_ReadIRData();
     Task_Draw();
 
     if (save_image) {
@@ -81,8 +81,9 @@ void Task_Init() {
   UserInterface_Init();
   status |= FileSystem_Init(sector_backup);
 
-  //status |= MLX90640_Init();
   MX_USB_DEVICE_Init();
+
+  status |= MLX90640_Init();
 
   if (status != 0) {
     Error_Handler();
@@ -92,7 +93,7 @@ void Task_Init() {
 
 void Task_ReadIRData() {
   if (!UserInterface_ShowMenu()) {
-    //MLX90640_ReadAndDisplay();
+    MLX90640_ReadAndDisplay();
   }
 }
 
