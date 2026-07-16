@@ -38,6 +38,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         w25q/W25Qxx.c
         Src/file_system.c
         Src/MLX90640.c
+        Src/flash.c
+        Inc/flash.h
 )
 
 # Add STM32CubeMX generated sources

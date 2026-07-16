@@ -234,7 +234,7 @@ void DrawFPS(void) {
 }
 
 
-int32_t UserInterface_ShowMenu(void) {
+int32_t UserInterface_ShowingMenu(void) {
   return menu_show;
 }
 
@@ -250,6 +250,7 @@ void UserInterface_RedrawIRImageIfNecessary(float *image) {
     do_redraw_ir_image = 0;
   }
 }
+
 
 void UserInterface_ReadStick() {
   HAL_StatusTypeDef status = HAL_ADC_Start(&hadc1);

@@ -478,7 +478,7 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 #define MIN_DIF_TO_REDRAW 0.5f //ToDo: make dynamic, e.g. (max - min) / 7
 int rescaled = 0;
 
-void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int autoscale)
+void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int autoscale, int immediate_display)
 {
     // 1. Pre-calculate common environmental constants
     float vdd = MLX90640_GetVdd(frameData, params);
@@ -564,7 +564,9 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
             if (diff > MIN_DIF_TO_REDRAW || diff < -MIN_DIF_TO_REDRAW || rescaled) {
                 if (To < min) min = To;
                 if (To > max) max = To;
-                ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(To));
+                if (immediate_display) {
+                    ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(To));
+                }
                 result[pixelNumber] = To;
             }
         }

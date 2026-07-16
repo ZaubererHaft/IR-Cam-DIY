@@ -5,7 +5,7 @@
 
 void UserInterface_Init(void);
 
-int32_t UserInterface_ShowMenu(void);
+int32_t UserInterface_ShowingMenu(void);
 
 void UserInterface_Draw(void);
 

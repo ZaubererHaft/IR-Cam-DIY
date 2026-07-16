@@ -5,6 +5,8 @@
 
 int32_t MLX90640_Init(void);
 
+int32_t MLX90640_Read(void);
+
 int32_t MLX90640_ReadAndDisplay(void);
 
 float *MLX90640_GetIRImage(void);

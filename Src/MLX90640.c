@@ -18,6 +18,7 @@
 
 extern I2C_HandleTypeDef hi2c1;
 
+
 static paramsMLX90640 mlxParams;
 static float emissivity = 0.95f;
 
@@ -50,7 +51,7 @@ int32_t MLX90640_Init(void) {
     return mlx_status;
 }
 
-int32_t MLX90640_ReadAndDisplay(void) {
+int32_t do_read_and_display(int display) {
     int32_t status = 0;
 
     if (new_ir_data_available) {
@@ -64,11 +65,21 @@ int32_t MLX90640_ReadAndDisplay(void) {
         status |= MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
         float Ta = MLX90640_GetTa(display_frame, &mlxParams);
         float tr = Ta - TA_SHIFT;
-        MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, ir_image, 0);
+        MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, ir_image, 0, display);
     }
+
 
     return status;
 }
+
+int32_t MLX90640_Read(void) {
+    return do_read_and_display(0);
+}
+
+int32_t MLX90640_ReadAndDisplay(void) {
+    return do_read_and_display(1);
+}
+
 
 float *MLX90640_GetIRImage(void) {
     return ir_image;
