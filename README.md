@@ -14,6 +14,12 @@
 
 ### USB
 
-### Sesnor
+### Sensor
 
 ### Flash
+
+## ToDos
+* Implement Config file
+* Fix saved image 
+* Activate upscaling when saving image
+* Implement battery level with ADC3

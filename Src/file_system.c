@@ -138,3 +138,9 @@ int32_t FileSystem_WriteBitmap(float *image, uint32_t size, const char *name) {
 
     return 0;
 }
+
+Config FileSystem_ReadConfig() {
+    Config config;
+    config.image_counter = 0;
+    return config;
+}
