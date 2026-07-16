@@ -40,7 +40,6 @@ int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddr
     uint8_t *bp = (uint8_t *) data;
 
     int ack = 0;
-    int cnt = 0;
 
     ack = HAL_I2C_Mem_Read(&hi2c1, (slaveAddr << 1), startAddress, I2C_MEMADD_SIZE_16BIT, bp, nMemAddressRead * 2, 500);
 
