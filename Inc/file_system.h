@@ -4,10 +4,10 @@
 #include <stdint.h>
 #include "config.h"
 
-int32_t FileSystem_Init(uint8_t *buffer);
+uint32_t FileSystem_Init(uint8_t *buffer, Config *out_config);
 
-int32_t FileSystem_WriteBitmap(float *image, uint32_t size, const char *name);
+uint32_t FileSystem_WriteBitmap(const float *image, uint32_t size, const char *name);
 
-Config FileSystem_ReadConfig();
+uint32_t FileSystem_UpdateConfig(const Config *config);
 
 #endif //CAM_FILE_SYSTEM_H

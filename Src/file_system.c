@@ -1,130 +1,230 @@
 #include "file_system.h"
+
+#include <stdio.h>
+#include <string.h>
+
 #include "ff.h"
 #include "heatmap.h"
 
 static FATFS fs;
-static uint8_t buffer[(32 * 24 * 2) + 66];
+static uint8_t bitmap_buffer[32 * 24 * 2 + 66];
 
-int32_t FileSystem_Init(uint8_t *buffer) {
-    FRESULT res = f_mount(&fs, "", 1);
-    if (res == FR_OK) {
-        return 0;
+#define CONFIG_FILE_NAME "config.txt"
+
+uint32_t FileSystem_FileExists(const char *file) {
+    FILINFO fno;
+    const FRESULT res = f_stat(file, &fno);
+
+    if (res == FR_OK && !(fno.fattrib & AM_DIR)) {
+        return 1;
     }
 
-    res = f_mkfs("0:", FM_ANY | FM_SFD, 4096, buffer, 4096);
+    return 0;
+}
+
+FRESULT FileSystem_SaveConfig(const Config *config) {
+    FIL config_file;
+    UINT bw;
+
+    FRESULT res = f_open(&config_file, CONFIG_FILE_NAME, FA_CREATE_ALWAYS | FA_WRITE);
 
     if (res == FR_OK) {
-        res = f_mount(&fs, "", 1);
+        char buff[32] = {0};
+        int32_t written = snprintf(buff, sizeof(buff), "%lu\n%lu\n", config->image_counter, config->heatmap_index);
+
+        if (written > 0) {
+            res |= f_write(&config_file, buff, strlen(buff), &bw);
+            res |= f_close(&config_file);
+        } else {
+            res = FR_INT_ERR;
+        }
     }
 
     return res;
 }
 
-int32_t FileSystem_WriteBitmap(float *image, uint32_t size, const char *name) {
-    buffer[0] = 'B';
-    buffer[1] = 'M';
+
+FRESULT FileSystem_CreateNewConfig() {
+    Config config_new;
+    config_new.image_counter = 0;
+    config_new.heatmap_index = 0;
+
+    return FileSystem_SaveConfig(&config_new);
+}
+
+uint32_t read_and_convert(FIL *file, uint32_t *out_value) {
+    char buff[32] = {0};
+
+    if (f_gets(buff, sizeof(buff), file) != NULL) {
+        char *endptr;
+        const uint32_t value = strtoul(buff, &endptr, 10);
+
+        if (buff != endptr) {
+            *out_value = value;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+FRESULT FileSystem_ReadConfig(Config *config) {
+    FIL config_file;
+
+    FRESULT res = f_open(&config_file, CONFIG_FILE_NAME, FA_READ);
+    if (res == FR_OK) {
+        if (!read_and_convert(&config_file, &config->image_counter)) {
+            res |= FR_INT_ERR;
+        }
+
+        if (!read_and_convert(&config_file, &config->heatmap_index)) {
+            res |= FR_INT_ERR;
+        }
+
+        res |= f_close(&config_file);
+    }
+
+    return res;
+}
+
+FRESULT create_if_necessary_and_read(Config *out_config) {
+    FRESULT res = FR_OK;
+
+    if (!FileSystem_FileExists(CONFIG_FILE_NAME)) {
+        res = FileSystem_CreateNewConfig();
+    }
+
+    res |= FileSystem_ReadConfig(out_config);
+    return res;
+}
+
+uint32_t FileSystem_Init(uint8_t *buffer, Config *out_config) {
+    FRESULT res = f_mount(&fs, "", 1);
+
+    // File system already exists -> check for config
+    if (res == FR_OK) {
+        res = create_if_necessary_and_read(out_config);
+    } else {
+        // no file system available, try to create...
+        res = f_mkfs("0:", FM_ANY | FM_SFD, 4096, buffer, 4096);
+        if (res == FR_OK) {
+            // ... and mount
+            res = f_mount(&fs, "", 1);
+            if (res == FR_OK) {
+                // now again: try to create config
+                res = create_if_necessary_and_read(out_config);
+            }
+        }
+    }
+
+    return res == FR_OK;
+}
+
+uint32_t FileSystem_WriteBitmap(const float *image, uint32_t size, const char *name) {
+    bitmap_buffer[0] = 'B';
+    bitmap_buffer[1] = 'M';
 
     //file size
-    buffer[2] = (size & 0x00FF) >> 0;
-    buffer[3] = (size & 0xFF00) >> 8;
-    buffer[4] = 0;
-    buffer[5] = 0;
+    bitmap_buffer[2] = (size & 0x00FF) >> 0;
+    bitmap_buffer[3] = (size & 0xFF00) >> 8;
+    bitmap_buffer[4] = 0;
+    bitmap_buffer[5] = 0;
 
     // reserved
-    buffer[6] = 0;
-    buffer[7] = 0;
-    buffer[8] = 0;
-    buffer[9] = 0;
+    bitmap_buffer[6] = 0;
+    bitmap_buffer[7] = 0;
+    bitmap_buffer[8] = 0;
+    bitmap_buffer[9] = 0;
 
     // offset
-    buffer[10] = 66;
-    buffer[11] = 0;
-    buffer[12] = 0;
-    buffer[13] = 0;
+    bitmap_buffer[10] = 66;
+    bitmap_buffer[11] = 0;
+    bitmap_buffer[12] = 0;
+    bitmap_buffer[13] = 0;
 
     // -----------------
     // size of info header
-    buffer[14] = 40;
-    buffer[15] = 0;
-    buffer[16] = 0;
-    buffer[17] = 0;
+    bitmap_buffer[14] = 40;
+    bitmap_buffer[15] = 0;
+    bitmap_buffer[16] = 0;
+    bitmap_buffer[17] = 0;
 
     // horizontal width
-    buffer[18] = 32;
-    buffer[19] = 0;
-    buffer[20] = 0;
-    buffer[21] = 0;
+    bitmap_buffer[18] = 32;
+    bitmap_buffer[19] = 0;
+    bitmap_buffer[20] = 0;
+    bitmap_buffer[21] = 0;
 
     // vertical height
-    buffer[22] = 24;
-    buffer[23] = 0;
-    buffer[24] = 0;
-    buffer[25] = 0;
+    bitmap_buffer[22] = 0xE8;
+    bitmap_buffer[23] = 0xFF;
+    bitmap_buffer[24] = 0xFF;
+    bitmap_buffer[25] = 0xFF;
 
     // 1 plane
-    buffer[26] = 1;
-    buffer[27] = 0;
+    bitmap_buffer[26] = 1;
+    bitmap_buffer[27] = 0;
 
     // 16 bits per pixel
-    buffer[28] = 16;
-    buffer[29] = 0;
+    bitmap_buffer[28] = 16;
+    bitmap_buffer[29] = 0;
 
     //compression - BI BITFIELDS
-    buffer[30] = 3;
-    buffer[31] = 0;
-    buffer[32] = 0;
-    buffer[33] = 0;
+    bitmap_buffer[30] = 3;
+    bitmap_buffer[31] = 0;
+    bitmap_buffer[32] = 0;
+    bitmap_buffer[33] = 0;
 
     // compressed image size
-    buffer[34] = 0;
-    buffer[35] = 0;
-    buffer[36] = 0;
-    buffer[37] = 0;
+    bitmap_buffer[34] = 0;
+    bitmap_buffer[35] = 0;
+    bitmap_buffer[36] = 0;
+    bitmap_buffer[37] = 0;
 
     //pixel per m X
-    buffer[38] = 0x13;
-    buffer[39] = 0x0B;
-    buffer[40] = 0;
-    buffer[41] = 0;
+    bitmap_buffer[38] = 0x13;
+    bitmap_buffer[39] = 0x0B;
+    bitmap_buffer[40] = 0;
+    bitmap_buffer[41] = 0;
 
     //pixel per m Y
-    buffer[42] = 0x13;
-    buffer[43] = 0x0B;
-    buffer[44] = 0;
-    buffer[45] = 0;
+    bitmap_buffer[42] = 0x13;
+    bitmap_buffer[43] = 0x0B;
+    bitmap_buffer[44] = 0;
+    bitmap_buffer[45] = 0;
 
     //Colors used
-    buffer[46] = 0;
-    buffer[47] = 0;
-    buffer[48] = 0;
-    buffer[49] = 0;
+    bitmap_buffer[46] = 0;
+    bitmap_buffer[47] = 0;
+    bitmap_buffer[48] = 0;
+    bitmap_buffer[49] = 0;
 
     //All colors are important
-    buffer[50] = 0;
-    buffer[51] = 0;
-    buffer[52] = 0;
-    buffer[53] = 0;
+    bitmap_buffer[50] = 0;
+    bitmap_buffer[51] = 0;
+    bitmap_buffer[52] = 0;
+    bitmap_buffer[53] = 0;
 
     // Rot-Maske: 0xF800 (11111000 00000000)
-    buffer[54] = 0x00;
-    buffer[55] = 0xF8;
-    buffer[56] = 0x00;
-    buffer[57] = 0x00;
+    bitmap_buffer[54] = 0x00;
+    bitmap_buffer[55] = 0xF8;
+    bitmap_buffer[56] = 0x00;
+    bitmap_buffer[57] = 0x00;
     // Grün-Maske: 0x07E0 (00000111 11100000)
-    buffer[58] = 0xE0;
-    buffer[59] = 0x07;
-    buffer[60] = 0x00;
-    buffer[61] = 0x00;
+    bitmap_buffer[58] = 0xE0;
+    bitmap_buffer[59] = 0x07;
+    bitmap_buffer[60] = 0x00;
+    bitmap_buffer[61] = 0x00;
     // Blau-Maske: 0x001F (00000000 00011111)
-    buffer[62] = 0x1F;
-    buffer[63] = 0x00;
-    buffer[64] = 0x00;
-    buffer[65] = 0x00;
+    bitmap_buffer[62] = 0x1F;
+    bitmap_buffer[63] = 0x00;
+    bitmap_buffer[64] = 0x00;
+    bitmap_buffer[65] = 0x00;
 
     for (int i = 0; i < size; ++i) {
-        uint16_t col = TempConverter(image[i]);
-        buffer[66 + i * 2] = col & 0xFF;
-        buffer[66 + i * 2 + 1] = col >> 8;
+        const uint16_t col = TempConverter(image[i]);
+        bitmap_buffer[66 + i * 2] = col & 0xFF;
+        bitmap_buffer[66 + i * 2 + 1] = col >> 8;
     }
 
     FIL fil;
@@ -132,15 +232,14 @@ int32_t FileSystem_WriteBitmap(float *image, uint32_t size, const char *name) {
 
     UINT written;
     if (res == FR_OK) {
-        f_write(&fil, buffer, sizeof(buffer), &written);
-        f_close(&fil);
+        res |= f_write(&fil, bitmap_buffer, sizeof(bitmap_buffer), &written);
+        res |= f_close(&fil);
     }
 
-    return 0;
+    return res == FR_OK;
 }
 
-Config FileSystem_ReadConfig() {
-    Config config;
-    config.image_counter = 0;
-    return config;
+uint32_t FileSystem_UpdateConfig(const Config *config) {
+    return FileSystem_SaveConfig(config) == FR_OK;
 }
+

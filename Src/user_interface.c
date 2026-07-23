@@ -50,12 +50,14 @@ static GPIO_PinState old_npg;
 static uint32_t initial = 1;
 
 
-void UserInterface_Init(void) {
+uint32_t UserInterface_Init(void) {
   ILI9341_Init();
   ILI9341_Fill_Screen(BLACK);
   ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
   ILI9341_Draw_Text(" D-CAM ", 0, 0, WHITE, 2, BLACK);
   ILI9341_Draw_Rectangle(offset_x, offset_y, ir_width * pixel_size, ir_height * pixel_size,DARKGREY);
+
+  return 1;
 }
 
 void DrawMenuLine(const char *text, uint16_t line) {

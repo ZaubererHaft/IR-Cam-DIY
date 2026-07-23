@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void UserInterface_Init(void);
+uint32_t UserInterface_Init(void);
 
 int32_t UserInterface_ShowingMenu(void);
 

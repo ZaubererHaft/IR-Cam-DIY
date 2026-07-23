@@ -8,16 +8,17 @@
 #include "MLX90640.h"
 #include "usb_device.h"
 #include "user_interface.h"
-#include "W25Qxx.h"
 
 /**
  * Prototypes
  */
 void Task_Init();
-void Task_ReadIRData();
-void Task_Draw();
-void Task_WriteImage();
 
+void Task_ReadIRData();
+
+void Task_Draw();
+
+void Task_WriteImage();
 
 
 /**
@@ -25,7 +26,7 @@ void Task_WriteImage();
  */
 static uint8_t sector_backup[4096] = {0};
 static int32_t menu_fresh_opened = 0;
-
+static Config config;
 
 void application_main(void) {
   HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
@@ -45,30 +46,31 @@ void application_main(void) {
 }
 
 
-
 void Task_Init() {
-  uint32_t status = 0;
-
-  UserInterface_Init();
-
-  status = Flash_Init();
-  status |= FileSystem_Init(sector_backup);
-  MX_USB_DEVICE_Init();
-  status |= MLX90640_Init();
-
-  if (status != 0) {
+  if (!UserInterface_Init()) {
     Error_Handler();
   }
-}
+  if (!Flash_Init()) {
+    Error_Handler();
+  }
 
+  if (!FileSystem_Init(sector_backup, &config)) {
+    Error_Handler();
+  }
+
+  if (MLX90640_Init() != MLX90640_NO_ERROR) {
+    Error_Handler();
+  }
+
+  MX_USB_DEVICE_Init();
+}
 
 
 void Task_ReadIRData() {
   if (!UserInterface_ShowingMenu()) {
     MLX90640_ReadAndDisplay();
     menu_fresh_opened = 0;
-  }
-  else if (!menu_fresh_opened) {
+  } else if (!menu_fresh_opened) {
     MLX90640_Read();
     menu_fresh_opened = 1;
   }
@@ -83,7 +85,17 @@ void Task_Draw() {
 
 void Task_WriteImage() {
   if (save_image) {
-    (void) FileSystem_WriteBitmap(MLX90640_GetIRImage(), 32 * 24, "test3.bmp");
+    char buff[32] = {0};
+    int32_t written = snprintf(buff, sizeof(buff), "img%lu.bmp", config.image_counter);
+    if (written > 0) {
+      uint32_t status = FileSystem_WriteBitmap(MLX90640_GetIRImage(), 32 * 24, buff);
+      config.image_counter++;
+      status |= FileSystem_UpdateConfig(&config);
+
+      if (!status) {
+        Error_Handler();
+      }
+    }
     save_image = 0;
   }
 }

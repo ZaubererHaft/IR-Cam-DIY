@@ -5,6 +5,8 @@
 
 typedef struct Config_ {
     uint32_t image_counter;
+    uint32_t heatmap_index;
 } Config;
+
 
 #endif //CAM_CONFIG_H

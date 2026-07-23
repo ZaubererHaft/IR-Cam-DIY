@@ -45,5 +45,5 @@ uint32_t Flash_Init(void) {
     W25Q_Status status = W25Q_Init(&flash, &params);
     status |= W25Q_Reset(&flash);
 
-    return status != W25Q_OK;
+    return status == W25Q_OK;
 }
