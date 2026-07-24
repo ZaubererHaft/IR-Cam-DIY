@@ -51,7 +51,20 @@ int32_t MLX90640_Init(void) {
     return mlx_status;
 }
 
-int32_t do_read_and_display(int display) {
+int32_t MLX90640_Complete(void) {
+    int32_t status = 0;
+
+    if (new_ir_data_available) {
+        status = MLX90640_CompleteFrameDataAsync(MLX90640_ADDR, data_frame);
+        float Ta = MLX90640_GetTa(data_frame, &mlxParams);
+        float tr = Ta - TA_SHIFT;
+        MLX90640_CalculateToAndDisplay(data_frame, &mlxParams, emissivity, tr, ir_image, 0, 1);
+    }
+
+    return status;
+}
+
+int32_t MLX90640_ReadAndDisplay(void) {
     int32_t status = 0;
 
     if (new_ir_data_available) {
@@ -65,19 +78,10 @@ int32_t do_read_and_display(int display) {
         status |= MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
         float Ta = MLX90640_GetTa(display_frame, &mlxParams);
         float tr = Ta - TA_SHIFT;
-        MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, ir_image, 0, display);
+        MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, ir_image, 0, 1);
     }
 
-
     return status;
-}
-
-int32_t MLX90640_Read(void) {
-    return do_read_and_display(0);
-}
-
-int32_t MLX90640_ReadAndDisplay(void) {
-    return do_read_and_display(1);
 }
 
 

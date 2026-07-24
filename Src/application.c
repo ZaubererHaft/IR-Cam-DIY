@@ -12,14 +12,17 @@
 /**
  * Prototypes
  */
-void Task_Init();
+void Task_Init(void);
 
-void Task_ReadIRData();
+void Task_ReadIRData(void);
 
-void Task_Draw();
+void Task_Draw(void);
 
-void Task_WriteImage();
+void Task_WriteImage(void);
 
+void Task_SynchConfig(void);
+
+void Task_BlinkyDog(void);
 
 /**
  * Local variables
@@ -27,26 +30,25 @@ void Task_WriteImage();
 static uint8_t sector_backup[4096] = {0};
 static int32_t menu_fresh_opened = 0;
 static Config config;
+static uint32_t time = 0;
+static uint32_t synch_config = 0;
 
 void application_main(void) {
-  HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
   Task_Init();
 
-  uint32_t time = HAL_GetTick();
   while (1) {
     Task_ReadIRData();
     Task_Draw();
     Task_WriteImage();
-
-    if (HAL_GetTick() - time > 1000) {
-      HAL_GPIO_TogglePin(USER_LED_GPIO_Port, USER_LED_Pin);
-      time = HAL_GetTick();
-    }
+    Task_SynchConfig();
+    Task_BlinkyDog();
   }
 }
 
 
-void Task_Init() {
+void Task_Init(void) {
+  HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+
   if (!UserInterface_Init()) {
     Error_Handler();
   }
@@ -63,39 +65,57 @@ void Task_Init() {
   }
 
   MX_USB_DEVICE_Init();
+  time = HAL_GetTick();
 }
 
 
-void Task_ReadIRData() {
+void Task_ReadIRData(void) {
   if (!UserInterface_ShowingMenu()) {
     MLX90640_ReadAndDisplay();
-    menu_fresh_opened = 0;
   } else if (!menu_fresh_opened) {
-    MLX90640_Read();
+    MLX90640_Complete();
     menu_fresh_opened = 1;
   }
 }
 
 
-void Task_Draw() {
+void Task_Draw(void) {
   UserInterface_Draw();
   UserInterface_RedrawIRImageIfNecessary(MLX90640_GetIRImage());
 }
 
 
-void Task_WriteImage() {
+void Task_WriteImage(void) {
   if (save_image) {
     char buff[32] = {0};
     int32_t written = snprintf(buff, sizeof(buff), "img%lu.bmp", config.image_counter);
     if (written > 0) {
       uint32_t status = FileSystem_WriteBitmap(MLX90640_GetIRImage(), 32 * 24, buff);
       config.image_counter++;
-      status |= FileSystem_UpdateConfig(&config);
+      synch_config = 1;
 
       if (!status) {
         Error_Handler();
       }
     }
     save_image = 0;
+  }
+}
+
+void Task_SynchConfig(void) {
+  if (synch_config) {
+    if (!FileSystem_UpdateConfig(&config)) {
+      Error_Handler();
+    }
+
+    synch_config = 0;
+  }
+}
+
+
+void Task_BlinkyDog(void) {
+  if (HAL_GetTick() - time > 1000) {
+    HAL_GPIO_TogglePin(USER_LED_GPIO_Port, USER_LED_Pin);
+    time = HAL_GetTick();
   }
 }
