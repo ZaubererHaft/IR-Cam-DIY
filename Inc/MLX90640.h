@@ -3,11 +3,12 @@
 
 #include <stdint.h>
 
+
 int32_t MLX90640_Init(void);
 
-int32_t MLX90640_Complete(void);
+int32_t MLX90640_Restart(void);
 
-int32_t MLX90640_ReadAndDisplay(void);
+int32_t MLX90640_ReadAndDisplay(uint32_t request_next);
 
 float *MLX90640_GetIRImage(void);
 

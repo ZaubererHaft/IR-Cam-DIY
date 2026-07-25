@@ -65,16 +65,27 @@ void Task_Init(void) {
   }
 
   MX_USB_DEVICE_Init();
+
+  if (MLX90640_Restart() != MLX90640_NO_ERROR) {
+    Error_Handler();
+  }
+
   time = HAL_GetTick();
 }
 
 
 void Task_ReadIRData(void) {
-  if (!UserInterface_ShowingMenu()) {
-    MLX90640_ReadAndDisplay();
-  } else if (!menu_fresh_opened) {
-    MLX90640_Complete();
+  if (UserInterface_ShowingMenu()) {
     menu_fresh_opened = 1;
+    MLX90640_ReadAndDisplay(0);
+  } else {
+    if (menu_fresh_opened) {
+      // menu closed -> restart
+      MLX90640_Restart();
+    } else {
+      MLX90640_ReadAndDisplay(1);
+    }
+    menu_fresh_opened = 0;
   }
 }
 

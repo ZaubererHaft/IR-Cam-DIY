@@ -178,7 +178,7 @@ void DrawMenu(void) {
   }
 }
 
-void DrawHeatmp(void) {
+void DrawHeatmap(void) {
   if (redraw_heatmap || fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
     tMinOld = tMin;
     tMaxOld = tMax;
@@ -282,7 +282,7 @@ void UserInterface_Draw(void) {
   DrawFPS();
   DrawRecordState();
   DrawBatteryState();
-  DrawHeatmp();
+  DrawHeatmap();
 
 
   if (menu_show) {

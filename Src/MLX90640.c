@@ -1,5 +1,7 @@
 #include "MLX90640.h"
 
+#include <string.h>
+
 #include "heatmap.h"
 #include "ILI9341_DMA_driver.h"
 #include "MLX90640_API.h"
@@ -22,14 +24,14 @@ extern I2C_HandleTypeDef hi2c1;
 static paramsMLX90640 mlxParams;
 static float emissivity = 0.95f;
 
-static uint16_t ir_buffer_1[834];
-static uint16_t ir_buffer_2[834];
-static uint16_t *data_frame = ir_buffer_2;
-static uint16_t *display_frame = ir_buffer_1;
+static uint16_t rx_buff[834];
+static uint16_t calc_buff[834];
 
 static float ir_image[32 * 24];
 
 static int new_ir_data_available = 0;
+
+static int sub_page = 0;
 
 int32_t MLX90640_Init(void) {
     uint16_t eeMLX90640[832];
@@ -45,40 +47,31 @@ int32_t MLX90640_Init(void) {
     if (mlx_status == MLX90640_NO_ERROR) {
         mlx_status |= MLX90640_ExtractParameters(eeMLX90640, &mlxParams);
     }
-    if (mlx_status == MLX90640_NO_ERROR) {
-        mlx_status |= MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
-    }
+
     return mlx_status;
 }
 
-int32_t MLX90640_Complete(void) {
-    int32_t status = 0;
-
-    if (new_ir_data_available) {
-        status = MLX90640_CompleteFrameDataAsync(MLX90640_ADDR, data_frame);
-        float Ta = MLX90640_GetTa(data_frame, &mlxParams);
-        float tr = Ta - TA_SHIFT;
-        MLX90640_CalculateToAndDisplay(data_frame, &mlxParams, emissivity, tr, ir_image, 0, 1);
-    }
-
-    return status;
+int32_t MLX90640_Restart(void) {
+    return MLX90640_GetFrameDataAsync(MLX90640_ADDR, rx_buff);
 }
 
-int32_t MLX90640_ReadAndDisplay(void) {
+int32_t MLX90640_ReadAndDisplay(uint32_t request_next) {
     int32_t status = 0;
 
     if (new_ir_data_available) {
         new_ir_data_available = 0;
 
-        status = MLX90640_CompleteFrameDataAsync(MLX90640_ADDR, data_frame);
-        uint16_t *tmp = display_frame;
-        display_frame = data_frame;
-        data_frame = tmp;
+        status = MLX90640_CompleteFrameDataAsync(MLX90640_ADDR, rx_buff);
+        memcpy(calc_buff, rx_buff, sizeof(rx_buff));
 
-        status |= MLX90640_GetFrameDataAsync(MLX90640_ADDR, data_frame);
-        float Ta = MLX90640_GetTa(display_frame, &mlxParams);
+        // if we don't request the next sub page we still want to complete the checkerboard if required
+        if (request_next || sub_page) {
+            status |= MLX90640_GetFrameDataAsync(MLX90640_ADDR, rx_buff);
+        }
+
+        float Ta = MLX90640_GetTa(calc_buff, &mlxParams);
         float tr = Ta - TA_SHIFT;
-        MLX90640_CalculateToAndDisplay(display_frame, &mlxParams, emissivity, tr, ir_image, 0, 1);
+        MLX90640_CalculateToAndDisplay(calc_buff, &mlxParams, emissivity, tr, ir_image, 0, request_next);
     }
 
     return status;
@@ -93,5 +86,6 @@ float *MLX90640_GetIRImage(void) {
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
     if (hi2c == &hi2c1) {
         new_ir_data_available = 1;
+        sub_page = !sub_page;
     }
 }
