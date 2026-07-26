@@ -11,11 +11,15 @@
 #include "heatmap.h"
 
 typedef enum MENU_ {
-  MAIN,
-  SELECT_HEATMAP
+  MENU_MAIN,
+  MENU_SELECT_HEATMAP,
+  MENU_SCALING,
+  MENU_SAVE_IMAGE,
+  MENU_SETTINGS,
+  MENU_EXIT
 } MENU;
 
-static MENU menu_cur_entry = MAIN;
+static MENU menu_cur_entry = MENU_MAIN;
 static uint8_t menu_show = 0;
 static uint16_t menu_cursor_Y = 1;
 static uint16_t menu_records = 6;
@@ -23,6 +27,7 @@ static uint16_t menu_records = 6;
 static uint32_t last_stick_pressed = 0;
 
 static uint16_t frames = 0;
+static uint16_t last_frames = 0;
 static uint8_t do_redraw_ir_image = 0;
 
 static float tMinOld;
@@ -32,7 +37,10 @@ float tMin = 15.0f;
 float tMax = 40.0f;
 uint32_t save_image = 0;
 
-uint16_t (*TempConverter)(float) = &TempToMagma565_Fast;
+HeatmapFunction TempConverter = &TempToMagma565_Fast;
+HeatmapFunction available_heatmaps[] = {
+  &TempToMagma565_Fast, &TempToGray565, &TempToGray565_InvertedFast, &TempToRainbow565_Fast
+};
 
 static uint32_t frame_counter = 0;
 
@@ -82,12 +90,15 @@ void DrawMenuLine(const char *text, uint16_t line) {
 
 void DrawRecordState(void) {
   if (redraw_record_state) {
+    // clear old area
     ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2 - 4, 0, pixel_size * 4, pixel_size * 2 + 4, BLACK);
 
     if (menu_show) {
+      // two gray bars -> pause sign
       ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2, 0, 4, pixel_size * 2, LIGHTGREY);
       ILI9341_Draw_Rectangle(lcd_width - pixel_size * 2 + 6, 0, 4, pixel_size * 2, LIGHTGREY);
     } else {
+      // else red dot -> record sign
       ILI9341_Draw_Filled_Circle(lcd_width - pixel_size * 2 + 4, pixel_size, pixel_size, RED);
     }
 
@@ -159,14 +170,14 @@ void DrawBatteryState(void) {
 
 void DrawMenu(void) {
   if (menu_redraw) {
-    if (menu_cur_entry == MAIN) {
+    if (menu_cur_entry == MENU_MAIN) {
       DrawMenuLine(" Menu", 0);
-      DrawMenuLine(" Heatmap", 1);
-      DrawMenuLine(" Scaling", 2);
-      DrawMenuLine(" Save Image", 3);
-      DrawMenuLine(" Settings", 4);
-      DrawMenuLine(" Exit", 5);
-    } else if (menu_cur_entry == SELECT_HEATMAP) {
+      DrawMenuLine(" Heatmap", MENU_SELECT_HEATMAP);
+      DrawMenuLine(" Scaling", MENU_SCALING);
+      DrawMenuLine(" Save Image", MENU_SAVE_IMAGE);
+      DrawMenuLine(" Settings", MENU_SETTINGS);
+      DrawMenuLine(" Exit", MENU_EXIT);
+    } else if (menu_cur_entry == MENU_SELECT_HEATMAP) {
       DrawMenuLine(" Select Heatmap", 0);
       DrawMenuLine(" Magma", 1);
       DrawMenuLine(" Gray", 2);
@@ -219,7 +230,7 @@ void DrawFPS(void) {
   if (!menu_show) {
     uint32_t count = HAL_GetTick();
 
-    if (count - frame_counter >= 1000) {
+    if (count - frame_counter >= 1000 && last_frames != frames) {
       int x = ir_width * pixel_size + offset_x;
       int y = lcd_height - 15;
 
@@ -230,6 +241,8 @@ void DrawFPS(void) {
       ILI9341_Draw_Text(buff, x, y, WHITE, 1, BLACK);
 
       frame_counter = count;
+
+      last_frames = frames;
       frames = 0;
     }
   }
@@ -300,29 +313,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
     if (time - last_stick_pressed > 100) {
       if (menu_show) {
-        if (menu_cur_entry == MAIN) {
-          if (menu_cursor_Y == 1) {
-            menu_cur_entry = SELECT_HEATMAP;
-          } else if (menu_cursor_Y == 3) {
+        if (menu_cur_entry == MENU_MAIN) {
+          if (menu_cursor_Y == MENU_SELECT_HEATMAP) {
+            menu_cur_entry = MENU_SELECT_HEATMAP;
+          } else if (menu_cursor_Y == MENU_SAVE_IMAGE) {
             save_image = 1;
-          } else if (menu_cursor_Y == 5) {
+          } else if (menu_cursor_Y == MENU_EXIT) {
             menu_show = 0;
             do_redraw_ir_image = 1;
           }
-        } else if (menu_cur_entry == SELECT_HEATMAP) {
-          if (menu_cursor_Y == 1) {
-            TempConverter = &TempToMagma565_Fast;
-          } else if (menu_cursor_Y == 2) {
-            TempConverter = &TempToGray565;
-          } else if (menu_cursor_Y == 3) {
-            TempConverter = &TempToGray565_InvertedFast;
-          } else if (menu_cursor_Y == 4) {
-            TempConverter = &TempToRainbow565_Fast;
-          }
-
+        } else if (menu_cur_entry == MENU_SELECT_HEATMAP) {
+          TempConverter = available_heatmaps[menu_cursor_Y - 1];
           redraw_heatmap = 1;
           menu_cursor_Y = 1;
-          menu_cur_entry = MAIN;
+          menu_cur_entry = MENU_MAIN;
         }
       } else {
         menu_cursor_Y = 1;

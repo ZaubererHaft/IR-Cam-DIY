@@ -475,7 +475,7 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 }
 
 //------------------------------------------------------------------------------
-#define MIN_DIF_TO_REDRAW 0.5f //ToDo: make dynamic, e.g. (max - min) / 7
+#define MIN_DIF_TO_REDRAW 0.50f //ToDo: make dynamic, e.g. (max - min) / 7
 int rescaled = 0;
 
 void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int autoscale, int immediate_display)

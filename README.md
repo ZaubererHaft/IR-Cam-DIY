@@ -19,7 +19,9 @@
 ### Flash
 
 ## ToDos
-* Implement Config file
-* Fix saved image 
+* Implement Config file [x]
+* Fix saved image [x]
 * Activate upscaling when saving image
 * Implement battery level with ADC3
+* Implement auto range or definable range
+* Fix warnings in user_interface.c

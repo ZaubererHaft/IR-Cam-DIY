@@ -11,7 +11,9 @@ uint16_t TempToGray565_InvertedFast(float temp);
 uint16_t TempToRainbow565_Fast(float temp);
 uint16_t TempToMagma565_Fast(float temp);
 
-extern uint16_t (*TempConverter)(float);
+typedef uint16_t (*HeatmapFunction)(float);
+extern HeatmapFunction TempConverter;
+extern HeatmapFunction available_heatmaps[];
 
 extern float tMin;
 extern float tMax;
