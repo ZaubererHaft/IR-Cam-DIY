@@ -58,6 +58,11 @@ void Task_Init(void) {
   if (!UserInterface_Init()) {
     Error_Handler();
   }
+
+  if (!Analog_PollADCData(adc_data)) {
+    Error_Handler();
+  }
+
   if (!Flash_Init()) {
     Error_Handler();
   }

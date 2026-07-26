@@ -122,7 +122,8 @@ void DrawBatteryState(void) {
     GPIO_PinState stat2 = !HAL_GPIO_ReadPin(BATTFULL_GPIO_Port, BATTFULL_Pin);
     GPIO_PinState npg = !HAL_GPIO_ReadPin(EXT_POWER_GPIO_Port, EXT_POWER_Pin);
 
-    if (initial_draw_battery || stat1 != old_stat1 || stat2 != old_stat2 || old_npg != npg || abs(battery_level - old_battery_level) > 350 || (
+    if (initial_draw_battery || stat1 != old_stat1 || stat2 != old_stat2 || old_npg != npg || abs(
+          battery_level - old_battery_level) > 500 || (
           stat1 && !stat2 && npg)) {
       initial_draw_battery = 0;
       old_stat1 = stat1;
@@ -150,7 +151,8 @@ void DrawBatteryState(void) {
       char buff[10] = {};
 
       // Battery level in numbers
-      snprintf(buff, 10, "%.lu%%", (uint32_t) ((float) battery_level / (float) max_lvl * 100.0f));
+      uint32_t lvl_perc = (uint32_t) ((float) battery_level / (float) max_lvl * 100.0f);
+      snprintf(buff, 10, "%lu%%", lvl_perc);
       ILI9341_Draw_Text(buff, x - 55, 0, WHITE, 2, BLACK);
       old_battery_level = battery_level;
 
@@ -174,9 +176,18 @@ void DrawBatteryState(void) {
         }
       } else if (!(stat1 && !stat2 && !npg)) {
         // all other cases than LBO (low battery) -> add bars
-        ILI9341_Draw_Rectangle(x, y, 4, pixel_size * 1.5, battery_bar_color);
-        ILI9341_Draw_Rectangle(x + 6, y, 4, pixel_size * 1.5, battery_bar_color);
-        ILI9341_Draw_Rectangle(x + 12, y, 4, pixel_size * 1.5, battery_bar_color);
+
+        if (lvl_perc > 25) {
+          ILI9341_Draw_Rectangle(x, y, 4, pixel_size * 1.5, battery_bar_color);
+        }
+
+        if (lvl_perc > 50) {
+          ILI9341_Draw_Rectangle(x + 6, y, 4, pixel_size * 1.5, battery_bar_color);
+        }
+
+        if (lvl_perc > 75) {
+          ILI9341_Draw_Rectangle(x + 12, y, 4, pixel_size * 1.5, battery_bar_color);
+        }
 
         if (!stat1 && !stat2 && npg) {
           // No battery or standby -> battery crossed out
