@@ -8,6 +8,7 @@
 #include "MLX90640.h"
 #include "usb_device.h"
 #include "user_interface.h"
+#include "analog.h"
 
 /**
  * Prototypes
@@ -15,6 +16,8 @@
 void Task_Init(void);
 
 void Task_ReadIRData(void);
+
+void Task_ReadAnalogData(void);
 
 void Task_Draw(void);
 
@@ -31,13 +34,16 @@ static uint8_t sector_backup[4096] = {0};
 static int32_t menu_fresh_opened = 0;
 static Config config;
 static uint32_t time = 0;
+static uint32_t time_analog = 0;
 static uint32_t synch_config = 0;
+static uint16_t adc_data[3] = {0};
 
 void application_main(void) {
   Task_Init();
 
   while (1) {
     Task_ReadIRData();
+    Task_ReadAnalogData();
     Task_Draw();
     Task_WriteImage();
     Task_SynchConfig();
@@ -87,6 +93,18 @@ void Task_ReadIRData(void) {
     }
     menu_fresh_opened = 0;
   }
+}
+
+void Task_ReadAnalogData(void) {
+
+  if (UserInterface_ShowingMenu() || HAL_GetTick() - time_analog > 5000) {
+    if (!Analog_PollADCData(adc_data)) {
+      Error_Handler();
+    }
+    time_analog = HAL_GetTick();
+  }
+
+  UserInterface_PutAnalogData(adc_data);
 }
 
 

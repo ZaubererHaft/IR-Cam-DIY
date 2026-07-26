@@ -1,17 +1,20 @@
 #MicroXplorer Configuration settings - do not modify
 ADC1.Channel-1\#ChannelRegularConversion=ADC_CHANNEL_8
 ADC1.Channel-2\#ChannelRegularConversion=ADC_CHANNEL_9
+ADC1.Channel-3\#ChannelRegularConversion=ADC_CHANNEL_6
 ADC1.DiscontinuousConvMode=ENABLE
 ADC1.EOCSelection=ADC_EOC_SEQ_CONV
-ADC1.IPParameters=Rank-1\#ChannelRegularConversion,master,Channel-1\#ChannelRegularConversion,SamplingTime-1\#ChannelRegularConversion,NbrOfConversionFlag,NbrOfConversion,Rank-2\#ChannelRegularConversion,Channel-2\#ChannelRegularConversion,SamplingTime-2\#ChannelRegularConversion,InjNumberOfConversion,DiscontinuousConvMode,EOCSelection,NbrOfDiscConversion
+ADC1.IPParameters=Rank-1\#ChannelRegularConversion,master,Channel-1\#ChannelRegularConversion,SamplingTime-1\#ChannelRegularConversion,NbrOfConversionFlag,NbrOfConversion,Rank-2\#ChannelRegularConversion,Channel-2\#ChannelRegularConversion,SamplingTime-2\#ChannelRegularConversion,InjNumberOfConversion,DiscontinuousConvMode,EOCSelection,NbrOfDiscConversion,Rank-3\#ChannelRegularConversion,Channel-3\#ChannelRegularConversion,SamplingTime-3\#ChannelRegularConversion
 ADC1.InjNumberOfConversion=0
-ADC1.NbrOfConversion=2
+ADC1.NbrOfConversion=3
 ADC1.NbrOfConversionFlag=1
 ADC1.NbrOfDiscConversion=1
 ADC1.Rank-1\#ChannelRegularConversion=1
 ADC1.Rank-2\#ChannelRegularConversion=2
+ADC1.Rank-3\#ChannelRegularConversion=3
 ADC1.SamplingTime-1\#ChannelRegularConversion=ADC_SAMPLETIME_15CYCLES
 ADC1.SamplingTime-2\#ChannelRegularConversion=ADC_SAMPLETIME_15CYCLES
+ADC1.SamplingTime-3\#ChannelRegularConversion=ADC_SAMPLETIME_144CYCLES
 ADC1.master=1
 CAD.formats=[]
 CAD.pinconfig=Dual

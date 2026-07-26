@@ -19027,7 +19027,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "100M"
+		(property "Value" "100K"
 			(at 251.206 27.686 90)
 			(effects
 				(font
@@ -23325,7 +23325,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "220M"
+		(property "Value" "220K"
 			(at 266.446 27.94 90)
 			(effects
 				(font

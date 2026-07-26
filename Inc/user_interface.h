@@ -11,4 +11,6 @@ void UserInterface_Draw(void);
 
 void UserInterface_RedrawIRImageIfNecessary(float *image);
 
+void UserInterface_PutAnalogData(const uint16_t data[3]);
+
 #endif //CAM_USER_INTERFACE_H

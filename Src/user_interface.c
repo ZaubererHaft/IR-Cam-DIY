@@ -2,6 +2,7 @@
 
 #include <math.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -19,43 +20,51 @@ typedef enum MENU_ {
   MENU_EXIT
 } MENU;
 
-static MENU menu_cur_entry = MENU_MAIN;
-static uint8_t menu_show = 0;
-static uint16_t menu_cursor_Y = 1;
-static uint16_t menu_records = 6;
-
-static uint32_t last_stick_pressed = 0;
-
-static uint16_t frames = 0;
-static uint16_t last_frames = 0;
+// variables for drawing the IR image
 static uint8_t do_redraw_ir_image = 0;
 
-static float tMinOld;
-static float tMaxOld;
-
+// External memories
 float tMin = 15.0f;
 float tMax = 40.0f;
 uint32_t save_image = 0;
-
 HeatmapFunction TempConverter = &TempToMagma565_Fast;
 HeatmapFunction available_heatmaps[] = {
   &TempToMagma565_Fast, &TempToGray565, &TempToGray565_InvertedFast, &TempToRainbow565_Fast
 };
 
+// Variables for FPS
+static uint16_t frames = 0;
+static uint16_t last_frames = 0;
 static uint32_t frame_counter = 0;
 
-static int32_t redraw_record_state = 1;
+// Analog stick
+static uint32_t last_stick_pressed = 0;
+static uint16_t new_stick_y = 0;
+static uint16_t new_stick_x = 0;
+
+// Variables for menu
+static const uint32_t menu_records = MENU_EXIT + 1;
+static MENU menu_cur_entry = MENU_MAIN;
+static uint32_t menu_show = 0;
 static int32_t menu_redraw = 0;
+static int32_t redraw_record_state = 1;
+static uint16_t menu_cursor_Y = 1;
+
+// Heatmap
 static int32_t redraw_heatmap = 0;
+static float tMinOld;
+static float tMaxOld;
 
-extern ADC_HandleTypeDef hadc1;
-
+// Variables for battery
 static uint32_t last_batt = 0;
 static uint32_t last_anim_charge = 1;
 static GPIO_PinState old_stat1;
 static GPIO_PinState old_stat2;
 static GPIO_PinState old_npg;
-static uint32_t initial = 1;
+static uint32_t initial_draw_battery = 1;
+static const uint16_t max_lvl = 3583;
+static uint16_t battery_level = max_lvl;
+static uint16_t old_battery_level = 0;
 
 
 uint32_t UserInterface_Init(void) {
@@ -106,7 +115,6 @@ void DrawRecordState(void) {
   }
 }
 
-
 void DrawBatteryState(void) {
   if (HAL_GetTick() - last_batt > 1000) {
     // Every second: Translate electrical state to LED state s.t. we can use table 2-1 of the breakout board
@@ -114,8 +122,9 @@ void DrawBatteryState(void) {
     GPIO_PinState stat2 = !HAL_GPIO_ReadPin(BATTFULL_GPIO_Port, BATTFULL_Pin);
     GPIO_PinState npg = !HAL_GPIO_ReadPin(EXT_POWER_GPIO_Port, EXT_POWER_Pin);
 
-    if (initial || stat1 != old_stat1 || stat2 != old_stat2 || old_npg != npg || (stat1 && !stat2 && npg)) {
-      initial = 0;
+    if (initial_draw_battery || stat1 != old_stat1 || stat2 != old_stat2 || old_npg != npg || abs(battery_level - old_battery_level) > 350 || (
+          stat1 && !stat2 && npg)) {
+      initial_draw_battery = 0;
       old_stat1 = stat1;
       old_stat2 = stat2;
       old_npg = npg;
@@ -124,7 +133,7 @@ void DrawBatteryState(void) {
       uint32_t y = 3;
 
       // clean up
-      ILI9341_Draw_Rectangle(x - 4, 0, 25, pixel_size * 1.5 + 8, BLACK);
+      ILI9341_Draw_Rectangle(x - 55, 0, 77, pixel_size * 1.5 + 8, BLACK);
 
       // Battery frame
       uint16_t battery_bar_color = WHITE;
@@ -133,6 +142,19 @@ void DrawBatteryState(void) {
         battery_bar_color = GREEN;
       }
 
+      // ca. 4.2 V Ladeschlusspannung
+      // spannungsteiler 100 - 220 -> max 2.88 V Spannung
+      // -> 0.875 Maximal von 3.3 V erreichbar
+      // -> 0.875 * 4096 = 3583 sind 100 % batteriespannung
+
+      char buff[10] = {};
+
+      // Battery level in numbers
+      snprintf(buff, 10, "%.lu%%", (uint32_t) ((float) battery_level / (float) max_lvl * 100.0f));
+      ILI9341_Draw_Text(buff, x - 55, 0, WHITE, 2, BLACK);
+      old_battery_level = battery_level;
+
+      // Battery frame
       ILI9341_Draw_Hollow_Rectangle_Coord(x - 3, 0, x + 18, y + pixel_size * 1.5 + 2, WHITE);
       ILI9341_Draw_Rectangle(x + 18, y + 1, 3, pixel_size * 1.25, WHITE);
 
@@ -266,16 +288,13 @@ void UserInterface_RedrawIRImageIfNecessary(float *image) {
   }
 }
 
+void UserInterface_PutAnalogData(const uint16_t data[3]) {
+  new_stick_y = data[0];
+  new_stick_x = data[1];
+  battery_level = data[2];
+}
 
 void UserInterface_ReadStick() {
-  HAL_StatusTypeDef status = HAL_ADC_Start(&hadc1);
-  status = HAL_ADC_PollForConversion(&hadc1, 10);
-  uint16_t new_stick_y = HAL_ADC_GetValue(&hadc1);
-
-  status = HAL_ADC_Start(&hadc1);
-  status = HAL_ADC_PollForConversion(&hadc1, 10);
-  uint16_t new_stick_x = HAL_ADC_GetValue(&hadc1);
-
   if (new_stick_y - 2048 > 1500) {
     menu_cursor_Y = (menu_cursor_Y + 1) % menu_records;
     if (menu_cursor_Y == 0) {
@@ -323,8 +342,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             do_redraw_ir_image = 1;
           }
         } else if (menu_cur_entry == MENU_SELECT_HEATMAP) {
-          TempConverter = available_heatmaps[menu_cursor_Y - 1];
-          redraw_heatmap = 1;
+          if (menu_cursor_Y - 1 < sizeof(available_heatmaps) / sizeof(available_heatmaps[0])) {
+            TempConverter = available_heatmaps[menu_cursor_Y - 1];
+            redraw_heatmap = 1;
+          }
+
           menu_cursor_Y = 1;
           menu_cur_entry = MENU_MAIN;
         }
