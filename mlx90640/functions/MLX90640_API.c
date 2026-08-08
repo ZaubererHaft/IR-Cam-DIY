@@ -19,6 +19,7 @@
 #include <MLX90640_API.h>
 #include <math.h>
 
+#include "config.h"
 #include "../../Inc/ui_constants.h"
 #include "heatmap.h"
 #include "ILI9341_DMA_driver.h"
@@ -42,6 +43,8 @@ static float GetMedian(float *values, int n);
 static int IsPixelBad(uint16_t pixel,paramsMLX90640 *params);
 static int ValidateFrameData(uint16_t *frameData);
 static int ValidateAuxData(uint16_t *auxData);
+
+static HeatmapFunction TemperatureConverter;
 
 int MLX90640_DumpEE(uint8_t slaveAddr, uint16_t *eeData)
 {
@@ -565,7 +568,7 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
                 if (To < min) min = To;
                 if (To > max) max = To;
                 if (immediate_display) {
-                    ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TempConverter(To));
+                    ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TemperatureConverter(To));
                 }
                 result[pixelNumber] = To;
             }
@@ -585,6 +588,10 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
             rescaled = 1;
         }
     }
+}
+
+void MLX90640_ConfigObserver(Config config) {
+    TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
 }
 
 

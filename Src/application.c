@@ -4,11 +4,11 @@
 
 #include "file_system.h"
 #include "flash.h"
-#include "heatmap.h"
 #include "MLX90640.h"
 #include "usb_device.h"
 #include "user_interface.h"
 #include "analog.h"
+#include "interface_callback.h"
 
 /**
  * Prototypes
@@ -27,6 +27,8 @@ void Task_SynchConfig(void);
 
 void Task_BlinkyDog(void);
 
+void Task_InformObservers(void);
+
 /**
  * Local variables
  */
@@ -37,6 +39,9 @@ static uint32_t time = 0;
 static uint32_t time_analog = 0;
 static uint32_t synch_config = 0;
 static uint16_t adc_data[3] = {0};
+static uint32_t save_image = 0;
+static uint32_t inform_observers = 1;
+
 
 void application_main(void) {
   Task_Init();
@@ -48,12 +53,17 @@ void application_main(void) {
     Task_WriteImage();
     Task_SynchConfig();
     Task_BlinkyDog();
+    Task_InformObservers();
   }
 }
 
 
 void Task_Init(void) {
   HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+
+  Config_AddObserver(UserInterface_ConfigObserver);
+  Config_AddObserver(FileSystem_ConfigObserver);
+  Config_AddObserver(MLX90640_ConfigObserver);
 
   if (!UserInterface_Init()) {
     Error_Handler();
@@ -70,6 +80,8 @@ void Task_Init(void) {
   if (!FileSystem_Init(sector_backup, &config)) {
     Error_Handler();
   }
+
+  Config_InformObservers(config);
 
   if (MLX90640_Init() != MLX90640_NO_ERROR) {
     Error_Handler();
@@ -101,7 +113,6 @@ void Task_ReadIRData(void) {
 }
 
 void Task_ReadAnalogData(void) {
-
   if (UserInterface_ShowingMenu() || HAL_GetTick() - time_analog > 5000) {
     if (!Analog_PollADCData(adc_data)) {
       Error_Handler();
@@ -138,7 +149,7 @@ void Task_WriteImage(void) {
 
 void Task_SynchConfig(void) {
   if (synch_config) {
-    if (!FileSystem_UpdateConfig(&config)) {
+    if (!FileSystem_WriteConfig(&config)) {
       Error_Handler();
     }
 
@@ -151,5 +162,22 @@ void Task_BlinkyDog(void) {
   if (HAL_GetTick() - time > 1000) {
     HAL_GPIO_TogglePin(USER_LED_GPIO_Port, USER_LED_Pin);
     time = HAL_GetTick();
+  }
+}
+
+void InterfaceCallback_RequestSaveImage(void) {
+  save_image = 1;
+}
+
+void InterfaceCallback_RequestNewHeatmap(uint32_t index) {
+  config.heatmap_index = index;
+  inform_observers = 1;
+  synch_config = 1;
+}
+
+void Task_InformObservers(void) {
+  if (inform_observers) {
+    Config_InformObservers(config);
+    inform_observers = 0;
   }
 }

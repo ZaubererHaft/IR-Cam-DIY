@@ -10,6 +10,7 @@
 #include "ILI9341_GFX.h"
 #include "ui_constants.h"
 #include "heatmap.h"
+#include "interface_callback.h"
 
 typedef enum MENU_ {
   MENU_MAIN,
@@ -22,15 +23,11 @@ typedef enum MENU_ {
 
 // variables for drawing the IR image
 static uint8_t do_redraw_ir_image = 0;
+static HeatmapFunction TemperatureConverter;
 
 // External memories
 float tMin = 15.0f;
 float tMax = 40.0f;
-uint32_t save_image = 0;
-HeatmapFunction TempConverter = &TempToMagma565_Fast;
-HeatmapFunction available_heatmaps[] = {
-  &TempToMagma565_Fast, &TempToGray565, &TempToGray565_InvertedFast, &TempToRainbow565_Fast
-};
 
 // Variables for FPS
 static uint16_t frames = 0;
@@ -76,6 +73,13 @@ uint32_t UserInterface_Init(void) {
 
   return 1;
 }
+
+
+void UserInterface_ConfigObserver(Config config) {
+  TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
+  redraw_heatmap = 1;
+}
+
 
 void DrawMenuLine(const char *text, uint16_t line) {
   uint16_t color_foreground = WHITE;
@@ -242,7 +246,7 @@ void DrawHeatmap(void) {
     float step = (tMax - tMin) / chunks;
     for (int i = 0; i < chunks; ++i) {
       float val = tMin + i * step;
-      ILI9341_Draw_Rectangle(x, y, 15, 4, TempConverter(val));
+      ILI9341_Draw_Rectangle(x, y, 15, 4, TemperatureConverter(val));
 
       y += 4;
     }
@@ -295,7 +299,7 @@ void UserInterface_RedrawIRImageIfNecessary(float *image) {
       int col = pixelNumber & 31;
 
       ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size,
-                             TempConverter(image[pixelNumber]));
+                             TemperatureConverter(image[pixelNumber]));
     }
     do_redraw_ir_image = 0;
   }
@@ -349,17 +353,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
           if (menu_cursor_Y == MENU_SELECT_HEATMAP) {
             menu_cur_entry = MENU_SELECT_HEATMAP;
           } else if (menu_cursor_Y == MENU_SAVE_IMAGE) {
-            save_image = 1;
+            InterfaceCallback_RequestSaveImage();
           } else if (menu_cursor_Y == MENU_EXIT) {
             menu_show = 0;
             do_redraw_ir_image = 1;
           }
         } else if (menu_cur_entry == MENU_SELECT_HEATMAP) {
-          if (menu_cursor_Y - 1 < sizeof(available_heatmaps) / sizeof(available_heatmaps[0])) {
-            TempConverter = available_heatmaps[menu_cursor_Y - 1];
-            redraw_heatmap = 1;
-          }
-
+          InterfaceCallback_RequestNewHeatmap(menu_cursor_Y - 1);
           menu_cursor_Y = 1;
           menu_cur_entry = MENU_MAIN;
         }

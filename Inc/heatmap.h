@@ -12,12 +12,10 @@ uint16_t TempToRainbow565_Fast(float temp);
 uint16_t TempToMagma565_Fast(float temp);
 
 typedef uint16_t (*HeatmapFunction)(float);
-extern HeatmapFunction TempConverter;
-extern HeatmapFunction available_heatmaps[];
+
+HeatmapFunction Heatmap_GetByIndex(uint32_t index);
 
 extern float tMin;
 extern float tMax;
-
-extern uint32_t save_image;
 
 #endif //CAM_HEATMAP_H

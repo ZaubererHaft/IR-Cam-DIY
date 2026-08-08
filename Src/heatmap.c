@@ -1,4 +1,12 @@
-#include "../Inc/heatmap.h"
+#include "heatmap.h"
+
+static HeatmapFunction available_heatmaps[] = {
+    &TempToMagma565_Fast, &TempToGray565, &TempToGray565_InvertedFast, &TempToRainbow565_Fast
+  };
+
+HeatmapFunction Heatmap_GetByIndex(uint32_t index) {
+    return available_heatmaps[index];
+}
 
 #define RGB565(r, g, b) \
 (((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F))

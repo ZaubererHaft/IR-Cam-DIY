@@ -8,6 +8,7 @@
 
 static FATFS fs;
 static uint8_t bitmap_buffer[32 * 24 * 2 + 66];
+static HeatmapFunction TemperatureConverter;
 
 #define CONFIG_FILE_NAME "config.txt"
 
@@ -29,8 +30,13 @@ FRESULT FileSystem_SaveConfig(const Config *config) {
     FRESULT res = f_open(&config_file, CONFIG_FILE_NAME, FA_CREATE_ALWAYS | FA_WRITE);
 
     if (res == FR_OK) {
-        char buff[32] = {0};
-        int32_t written = snprintf(buff, sizeof(buff), "%lu\n%lu\n", config->image_counter, config->heatmap_index);
+        char buff[64] = {0};
+        int32_t written = snprintf(buff, sizeof(buff), "%lu\n%lu\n%lu\n%.2f\n%.2f\n",
+            config->image_counter,
+            config->heatmap_index,
+            config->autoscale,
+            config->tMin,
+            config->tMax);
 
         if (written > 0) {
             res |= f_write(&config_file, buff, strlen(buff), &bw);
@@ -222,7 +228,7 @@ uint32_t FileSystem_WriteBitmap(const float *image, uint32_t size, const char *n
     bitmap_buffer[65] = 0x00;
 
     for (int i = 0; i < size; ++i) {
-        const uint16_t col = TempConverter(image[i]);
+        const uint16_t col = TemperatureConverter(image[i]);
         bitmap_buffer[66 + i * 2] = col & 0xFF;
         bitmap_buffer[66 + i * 2 + 1] = col >> 8;
     }
@@ -239,7 +245,11 @@ uint32_t FileSystem_WriteBitmap(const float *image, uint32_t size, const char *n
     return res == FR_OK;
 }
 
-uint32_t FileSystem_UpdateConfig(const Config *config) {
+uint32_t FileSystem_WriteConfig(const Config *config) {
     return FileSystem_SaveConfig(config) == FR_OK;
+}
+
+void FileSystem_ConfigObserver(Config config) {
+  TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
 }
 
