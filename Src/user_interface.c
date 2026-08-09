@@ -219,9 +219,9 @@ void DrawMenu(void) {
     } else if (menu_cur_entry == MENU_SELECT_HEATMAP) {
       DrawMenuLine(" Select Heatmap", 0);
 
-      uint32_t index = 1;
+      uint32_t index = 0;
       for (; index < Heatmap_GetSize(); index++) {
-        DrawMenuLine(Heatmap_GetNameByIndex(index - 1), index);
+        DrawMenuLine(Heatmap_GetNameByIndex(index), index+1);
       }
       index++;
       DrawMenuLine(" Exit", index);
