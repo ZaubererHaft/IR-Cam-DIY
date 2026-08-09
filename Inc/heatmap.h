@@ -15,6 +15,11 @@ typedef uint16_t (*HeatmapFunction)(float);
 
 HeatmapFunction Heatmap_GetByIndex(uint32_t index);
 
+const char * Heatmap_GetNameByIndex(uint32_t index);
+
+uint32_t Heatmap_GetSize();
+
+
 extern float tMin;
 extern float tMax;
 

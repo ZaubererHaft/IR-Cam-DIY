@@ -218,11 +218,13 @@ void DrawMenu(void) {
       DrawMenuLine(" Exit", MENU_EXIT);
     } else if (menu_cur_entry == MENU_SELECT_HEATMAP) {
       DrawMenuLine(" Select Heatmap", 0);
-      DrawMenuLine(" Magma", 1);
-      DrawMenuLine(" Gray", 2);
-      DrawMenuLine(" Gray (inv)", 3);
-      DrawMenuLine(" Rainbow", 4);
-      DrawMenuLine(" Exit", 5);
+
+      uint32_t index = 1;
+      for (; index < Heatmap_GetSize(); index++) {
+        DrawMenuLine(Heatmap_GetNameByIndex(index - 1), index);
+      }
+      index++;
+      DrawMenuLine(" Exit", index);
     }
     menu_redraw = 0;
   }
@@ -359,7 +361,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             do_redraw_ir_image = 1;
           }
         } else if (menu_cur_entry == MENU_SELECT_HEATMAP) {
-          InterfaceCallback_RequestNewHeatmap(menu_cursor_Y - 1);
+          if (menu_cur_entry > 0 && menu_cur_entry <= Heatmap_GetSize()) {
+            InterfaceCallback_RequestNewHeatmap(menu_cursor_Y - 1);
+          }
           menu_cursor_Y = 1;
           menu_cur_entry = MENU_MAIN;
         }

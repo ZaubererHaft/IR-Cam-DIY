@@ -4,8 +4,24 @@ static HeatmapFunction available_heatmaps[] = {
     &TempToMagma565_Fast, &TempToGray565, &TempToGray565_InvertedFast, &TempToRainbow565_Fast
   };
 
+static const char *heatmap_names[] = {" Magma", " Gray", " Gray (inv)", " Rainbow"};
+
 HeatmapFunction Heatmap_GetByIndex(uint32_t index) {
+    if (index >= Heatmap_GetSize()) {
+        return available_heatmaps[0];
+    }
     return available_heatmaps[index];
+}
+
+const char * Heatmap_GetNameByIndex(uint32_t index) {
+    if (index >= Heatmap_GetSize()) {
+        return "Unknown";
+    }
+    return heatmap_names[index];
+}
+
+uint32_t Heatmap_GetSize() {
+    return sizeof(available_heatmaps) / sizeof(available_heatmaps[0]);
 }
 
 #define RGB565(r, g, b) \

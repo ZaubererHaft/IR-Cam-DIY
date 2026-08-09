@@ -59,7 +59,7 @@ FRESULT FileSystem_CreateNewConfig() {
 }
 
 uint32_t read_and_convert(FIL *file, uint32_t *out_value) {
-    char buff[32] = {0};
+    char buff[64] = {0};
 
     if (f_gets(buff, sizeof(buff), file) != NULL) {
         char *endptr;
@@ -124,6 +124,14 @@ uint32_t FileSystem_Init(uint8_t *buffer, Config *out_config) {
     }
 
     return res == FR_OK;
+}
+
+uint32_t FileSystem_WriteConfig(const Config *config) {
+    return FileSystem_SaveConfig(config) == FR_OK;
+}
+
+void FileSystem_ConfigObserver(Config config) {
+    TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
 }
 
 uint32_t FileSystem_WriteBitmap(const float *image, uint32_t size, const char *name) {
@@ -245,11 +253,4 @@ uint32_t FileSystem_WriteBitmap(const float *image, uint32_t size, const char *n
     return res == FR_OK;
 }
 
-uint32_t FileSystem_WriteConfig(const Config *config) {
-    return FileSystem_SaveConfig(config) == FR_OK;
-}
-
-void FileSystem_ConfigObserver(Config config) {
-  TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
-}
 
