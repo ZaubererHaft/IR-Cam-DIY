@@ -552,25 +552,25 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
             float Sx = powf(alphaComp, 3) * (irData + alphaComp * taTr);
             Sx = sqrtf(sqrtf(Sx)) * params->ksTo[1];
 
-            float To = sqrtf(sqrtf(irData / (alphaComp * (1.0f - params->ksTo[1] * 273.15f) + Sx) + taTr)) - 273.15f;
+            float temperature = sqrtf(sqrtf(irData / (alphaComp * (1.0f - params->ksTo[1] * 273.15f) + Sx) + taTr)) - 273.15f;
 
             // Range Selection (Branchless-friendly)
-            int range = (To >= params->ct[1]) + (To >= params->ct[2]) + (To >= params->ct[3]);
+            int range = (temperature >= params->ct[1]) + (temperature >= params->ct[2]) + (temperature >= params->ct[3]);
 
             // Final Refinement
-            To = sqrtf(sqrtf(irData / (alphaComp * alphaCorrR[range] * (1.0f + params->ksTo[range] * (To - params->ct[range]))) + taTr)) - 273.15f;
+            temperature = sqrtf(sqrtf(irData / (alphaComp * alphaCorrR[range] * (1.0f + params->ksTo[range] * (temperature - params->ct[range]))) + taTr)) - 273.15f;
 
          //   To = (alpha * To) + ((1.0f - alpha) * result[pixelNumber]);
 
             // 4. Optimized Display Check
-            float diff = To - result[pixelNumber];
+            float diff = temperature - result[pixelNumber];
             if (diff > MIN_DIF_TO_REDRAW || diff < -MIN_DIF_TO_REDRAW || rescaled) {
-                if (To < min) min = To;
-                if (To > max) max = To;
+                if (temperature < min) min = temperature;
+                if (temperature > max) max = temperature;
                 if (immediate_display) {
-                    ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TemperatureConverter(To));
+                    ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TemperatureConverter(temperature));
                 }
-                result[pixelNumber] = To;
+                result[pixelNumber] = temperature;
             }
         }
     }

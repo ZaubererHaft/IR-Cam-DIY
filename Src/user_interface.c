@@ -63,6 +63,10 @@ static const uint16_t max_lvl = 3583;
 static uint16_t battery_level = max_lvl;
 static uint16_t old_battery_level = 0;
 
+//Variables for dialog
+static uint32_t dialog_show = 0;
+static const char *dialog_text = NULL;
+
 
 uint32_t UserInterface_Init(void) {
   ILI9341_Init();
@@ -78,6 +82,11 @@ uint32_t UserInterface_Init(void) {
 void UserInterface_ConfigObserver(Config config) {
   TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
   redraw_heatmap = 1;
+}
+
+void UserInterface_ShowDialog(const char *text) {
+  dialog_text = text;
+  dialog_show = 1;
 }
 
 
@@ -230,6 +239,20 @@ void DrawMenu(void) {
   }
 }
 
+void DrawDialog(void) {
+
+  uint32_t center_x = lcd_width / 2;
+  uint32_t center_y = lcd_height / 2;
+
+  uint32_t x1 = center_x - 100;
+  uint32_t x2 = center_x + 40;
+  uint32_t y1 = center_y - 20;
+  uint32_t y2 = center_y + 20;
+
+  ILI9341_Draw_Filled_Rectangle_Coord(x1, y1, x2, y2, RED);
+  ILI9341_Draw_Text(dialog_text, center_x - 60, center_y - 10, BLACK, 2, RED);
+}
+
 void DrawHeatmap(void) {
   if (redraw_heatmap || fabs(tMinOld - tMin) > 0.0f || fabs(tMaxOld - tMax) > 0.0f) {
     tMinOld = tMin;
@@ -290,8 +313,8 @@ void DrawFPS(void) {
 }
 
 
-int32_t UserInterface_ShowingMenu(void) {
-  return menu_show;
+int32_t UserInterface_ShowingAnyMenuOrDialog(void) {
+  return menu_show || dialog_show;
 }
 
 void UserInterface_RedrawIRImageIfNecessary(float *image) {
@@ -339,9 +362,15 @@ void UserInterface_Draw(void) {
   if (menu_show) {
     UserInterface_ReadStick();
     DrawMenu();
-  } else {
+  }
+  else if (dialog_show) {
+    DrawDialog();
+  }
+  else {
     frames++;
   }
+
+
 }
 
 

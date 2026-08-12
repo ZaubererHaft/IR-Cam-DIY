@@ -57,6 +57,10 @@ void application_main(void) {
   }
 }
 
+void application_error_handler(void) {
+  UserInterface_ShowDialog("Error");
+}
+
 
 void Task_Init(void) {
   HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
@@ -98,7 +102,7 @@ void Task_Init(void) {
 
 
 void Task_ReadIRData(void) {
-  if (UserInterface_ShowingMenu()) {
+  if (UserInterface_ShowingAnyMenuOrDialog()) {
     menu_fresh_opened = 1;
     MLX90640_ReadAndDisplay(0);
   } else {
@@ -113,7 +117,7 @@ void Task_ReadIRData(void) {
 }
 
 void Task_ReadAnalogData(void) {
-  if (UserInterface_ShowingMenu() || HAL_GetTick() - time_analog > 5000) {
+  if (UserInterface_ShowingAnyMenuOrDialog() || HAL_GetTick() - time_analog > 5000) {
     if (!Analog_PollADCData(adc_data)) {
       Error_Handler();
     }

@@ -7,7 +7,7 @@
 
 uint32_t UserInterface_Init(void);
 
-int32_t UserInterface_ShowingMenu(void);
+int32_t UserInterface_ShowingAnyMenuOrDialog(void);
 
 void UserInterface_Draw(void);
 
@@ -16,5 +16,7 @@ void UserInterface_RedrawIRImageIfNecessary(float *image);
 void UserInterface_PutAnalogData(const uint16_t data[3]);
 
 void UserInterface_ConfigObserver(Config config);
+
+void UserInterface_ShowDialog(const char *text);
 
 #endif //CAM_USER_INTERFACE_H
