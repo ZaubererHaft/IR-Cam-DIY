@@ -13,21 +13,21 @@
 /**
  * Prototypes
  */
-void Task_Init(void);
+static void Task_Init(void);
 
-void Task_ReadIRData(void);
+static void Task_ReadIRData(void);
 
-void Task_ReadAnalogData(void);
+static void Task_ReadAnalogData(void);
 
-void Task_Draw(void);
+static void Task_Draw(void);
 
-void Task_WriteImage(void);
+static void Task_WriteImage(void);
 
-void Task_SynchConfig(void);
+static void Task_SynchConfig(void);
 
-void Task_BlinkyDog(void);
+static void Task_BlinkyDog(void);
 
-void Task_InformObservers(void);
+static void Task_InformObservers(void);
 
 /**
  * Local variables
@@ -58,7 +58,7 @@ void application_main(void) {
 }
 
 void application_error_handler(void) {
-  UserInterface_ShowDialog("Error");
+  UserInterface_ShowError("Error");
 }
 
 

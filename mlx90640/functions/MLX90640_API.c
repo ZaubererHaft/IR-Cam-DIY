@@ -478,7 +478,7 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 }
 
 //------------------------------------------------------------------------------
-#define MIN_DIF_TO_REDRAW 0.50f //ToDo: make dynamic, e.g. (max - min) / 7
+#define MIN_DIF_TO_REDRAW 0.3f //ToDo: make dynamic, e.g. (max - min) / 7
 int rescaled = 0;
 
 void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int autoscale, int immediate_display)
@@ -520,7 +520,7 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
     uint8_t mode = (frameData[832] & MLX90640_CTRL_MEAS_MODE_MASK) >> 5;
     float irDataCPSub = params->tgc * irDataCP[subPage];
 
-    float alpha = 0.65f; // Wert zwischen 0 (starke Glättung) und 1 (keine Glättung)
+    float alpha = 0.4f; // Wert zwischen 0 (starke Glättung) und 1 (keine Glättung)
 
     // 3. Optimized Pixel Loop
     for(int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
@@ -560,7 +560,7 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
             // Final Refinement
             temperature = sqrtf(sqrtf(irData / (alphaComp * alphaCorrR[range] * (1.0f + params->ksTo[range] * (temperature - params->ct[range]))) + taTr)) - 273.15f;
 
-         //   To = (alpha * To) + ((1.0f - alpha) * result[pixelNumber]);
+            temperature = (alpha * temperature) + ((1.0f - alpha) * result[pixelNumber]);
 
             // 4. Optimized Display Check
             float diff = temperature - result[pixelNumber];
