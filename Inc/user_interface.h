@@ -10,7 +10,7 @@ bool UserInterface_Init(void);
 
 bool UserInterface_ShowingAnyMenuOrDialog(void);
 
-void UserInterface_Draw(void);
+void UserInterface_Loop(void);
 
 void UserInterface_RedrawIRImageIfNecessary(float *image);
 

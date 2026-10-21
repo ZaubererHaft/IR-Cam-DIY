@@ -3,6 +3,6 @@
 
 #include "ui_state.h"
 
-void Common_Draw(UiState *state);
+void Common_DrawInitial();
 
 #endif //CAM_COMMON_H

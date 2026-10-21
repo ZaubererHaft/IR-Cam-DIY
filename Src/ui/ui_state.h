@@ -7,12 +7,6 @@
 #include "config.h"
 #include "main.h"
 
-typedef enum UI_FRAME_ {
-    FRAME_DEFAULT,
-    FRAME_MENU_OVERVIEW,
-    FRAME_MENU_GALLERY
-} UI_FRAME;
-
 typedef struct AnalogData_ {
     uint16_t stick_x;
     uint16_t stick_y;
@@ -30,7 +24,6 @@ typedef struct BatteryState_ {
 } BatteryState;
 
 typedef struct UiState_ {
-    UI_FRAME current_frame;
     bool need_redraw;
     uint32_t fps;
     Config app_config;

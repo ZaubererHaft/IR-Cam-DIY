@@ -3,8 +3,7 @@
 
 #include "ui_state.h"
 
-void Gallery_Draw(UiState *state);
-
+void Gallery_DrawInitial(void);
 void StickRightMoved(void);
 void StickLeftMoved(void);
 void StickUpMoved(void);

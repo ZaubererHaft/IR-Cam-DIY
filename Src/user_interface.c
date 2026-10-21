@@ -347,7 +347,7 @@ void UserInterface_ReadStick() {
   }
 }
 
-void UserInterface_Draw(void) {
+void UserInterface_Loop(void) {
   DrawFPS();
   DrawRecordState();
   DrawBatteryState();

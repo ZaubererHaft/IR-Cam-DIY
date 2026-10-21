@@ -36,7 +36,7 @@ static bool string_ends_with(const char *str, const char *suffix) {
 
 
 static void Gallery_ClearImage() {
-    ILI9341_Draw_Rectangle(60, 70, 32 * PREVIEW_PIXEL_SIZE, 24 * PREVIEW_PIXEL_SIZE, BLACK);
+    ILI9341_Draw_Rectangle(60, 70, 32 * PREVIEW_PIXEL_SIZE + 40, 24 * PREVIEW_PIXEL_SIZE + 40, BLACK);
 }
 
 
@@ -90,6 +90,10 @@ static void Gallery_DrawCurrentImage() {
             ILI9341_Draw_Text(files[curr_image_index], 100, 200, WHITE, 1, BLACK);
         }
     }
+    else {
+        ILI9341_Draw_Text("No images found", 100, 120, WHITE, 1, BLACK);
+        ILI9341_Draw_Text("Why not make one?", 95, 130, WHITE, 1, BLACK);
+    }
 }
 
 
@@ -131,6 +135,23 @@ static void Gallery_ReadAllFiles() {
     }
 }
 
+static void Gallery_DeleteCurrentImage() {
+    if (available_files > 0) {
+        FRESULT fr = f_unlink(files[curr_image_index]);
+
+        if (fr == FR_OK) {
+            available_files--;
+
+            if (available_files > 0) {
+                curr_image_index = available_files - 1;
+            }
+
+            Gallery_ReadAllFiles();
+            Gallery_DrawCurrentImage();
+        }
+    }
+}
+
 static void Draw_Element(const char *text, uint32_t y_pos, uint32_t x_pos, uint32_t index_y, uint32_t index_x) {
     uint16_t color_foreground = WHITE;
     uint16_t color_background = BLACK;
@@ -154,7 +175,7 @@ static void Gallery_RedrawNavigationBar() {
     Draw_Element(" x", 40, 220, MARKER_Y_TOP, MARKER_X_INDEX_NEXT);
 }
 
-void Gallery_Draw(UiState *state) {
+void Gallery_DrawInitial() {
     ILI9341_Draw_Text("Gallery", 80, 40, WHITE, 2, BLACK);
 
     Gallery_ReadAllFiles();
@@ -208,7 +229,7 @@ void StickPressed(void) {
                 Gallery_DrawCurrentImage();
             }
         } else if (marker_index_x == MARKER_X_INDEX_DEL) {
-            // ToDo, delete file
+            Gallery_DeleteCurrentImage();
         }
     }
 }

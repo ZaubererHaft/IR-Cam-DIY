@@ -19,7 +19,7 @@ static void Task_ReadIRData(void);
 
 static void Task_ReadAnalogData(void);
 
-static void Task_Draw(void);
+static void Task_UserInterface(void);
 
 static void Task_WriteImage(void);
 
@@ -49,7 +49,7 @@ void application_main(void) {
   while (1) {
     Task_ReadIRData();
     Task_ReadAnalogData();
-    Task_Draw();
+    Task_UserInterface();
     Task_WriteImage();
     Task_SynchConfig();
     Task_BlinkyDog();
@@ -88,15 +88,15 @@ void Task_Init(void) {
 
   Config_InformObservers(config);
 
-  if (MLX90640_Init() != MLX90640_NO_ERROR) {
-    Error_Handler();
-  }
+// if (MLX90640_Init() != MLX90640_NO_ERROR) {
+//   Error_Handler();
+// }
 
-  //MX_USB_DEVICE_Init();
+// //MX_USB_DEVICE_Init();
 
-  if (MLX90640_Restart() != MLX90640_NO_ERROR) {
-    Error_Handler();
-  }
+// if (MLX90640_Restart() != MLX90640_NO_ERROR) {
+//   Error_Handler();
+// }
 
   time = HAL_GetTick();
 }
@@ -129,8 +129,8 @@ void Task_ReadAnalogData(void) {
 }
 
 
-void Task_Draw(void) {
-  UserInterface_Draw();
+void Task_UserInterface(void) {
+  UserInterface_Loop();
   UserInterface_RedrawIRImageIfNecessary(MLX90640_GetIRImage());
 }
 

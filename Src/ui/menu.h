@@ -1,7 +1,6 @@
 #ifndef CAM_MENU_H
 #define CAM_MENU_H
-#include "ui_state.h"
 
-void Menu_Draw(UiState *state);
+void Menu_DrawInitial(void);
 
 #endif //CAM_MENU_H

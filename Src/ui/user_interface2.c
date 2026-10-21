@@ -8,6 +8,7 @@
 #include "stdbool.h"
 #include "gallery.h"
 #include "menu.h"
+#include "navigation.h"
 #include "ui_state.h"
 
 static UiState state;
@@ -23,18 +24,19 @@ bool UserInterface_Init(void) {
     ILI9341_Fill_Screen(BLACK);
     ILI9341_Set_Rotation(SCREEN_HORIZONTAL_1);
 
-    state.current_frame = FRAME_MENU_GALLERY;
-    state.need_redraw = true;
+    Navigation_InitById(FRAME_DEFAULT);
+    //Navigation_NavigateToById(FRAME_GALLERY);
 
     return true;
 }
 
 bool UserInterface_ShowingAnyMenuOrDialog(void) {
-    return state.current_frame != FRAME_DEFAULT;
+    return Navigation_CurrentFrame()->id != FRAME_DEFAULT;
 }
 
+void UserInterface_Loop(void) {
 
-void UserInterface_Draw(void) {
+    // Read Navigation stick
     if (HAL_GetTick() - stick_lock_time > 100) {
         if (state.analog_data.stick_x - 2048 > 1500) {
             StickLeftMoved();
@@ -53,18 +55,6 @@ void UserInterface_Draw(void) {
         }
 
         stick_lock_time = HAL_GetTick();
-    }
-
-    if (state.need_redraw) {
-        Common_Draw(&state);
-
-        if (state.current_frame == FRAME_MENU_OVERVIEW) {
-            Menu_Draw(&state);
-        } else if (state.current_frame == FRAME_MENU_GALLERY) {
-            Gallery_Draw(&state);
-        }
-
-        state.need_redraw = false;
     }
 }
 

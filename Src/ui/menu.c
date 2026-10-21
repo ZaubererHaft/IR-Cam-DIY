@@ -1,4 +1,4 @@
 #include "menu.h"
 
-void Menu_Draw(UiState *state) {
+void Menu_DrawInitial() {
 }
