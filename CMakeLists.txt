@@ -34,15 +34,16 @@ enable_language(C ASM)
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME}
         Src/application.c
-        Src/user_interface.c
         w25q/W25Qxx.c
         Src/file_system.c
         Src/MLX90640.c
         Src/flash.c
         Src/analog.c
-        Inc/analog.h
-        Inc/interface_callback.h
+        Src/ui/gallery.c
         Src/config.c
+        Src/ui/user_interface2.c
+        Src/ui/menu.c
+        Src/ui/common.c
 )
 
 # Add STM32CubeMX generated sources
@@ -99,4 +100,9 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         stm32cubemx
 
         # Add user defined libraries
+)
+
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O binary ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.elf ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin
+        COMMENT "Generating raw binary image: my_arm_project.bin"
 )

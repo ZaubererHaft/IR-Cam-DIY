@@ -32,11 +32,11 @@ FRESULT FileSystem_SaveConfig(const Config *config) {
     if (res == FR_OK) {
         char buff[64] = {0};
         int32_t written = snprintf(buff, sizeof(buff), "%lu\n%lu\n%lu\n%.2f\n%.2f\n",
-            config->image_counter,
-            config->heatmap_index,
-            config->autoscale,
-            config->tMin,
-            config->tMax);
+                                   config->image_counter,
+                                   config->heatmap_index,
+                                   config->autoscale,
+                                   config->tMin,
+                                   config->tMax);
 
         if (written > 0) {
             res |= f_write(&config_file, buff, strlen(buff), &bw);
@@ -129,6 +129,7 @@ uint32_t FileSystem_Init(uint8_t *buffer, Config *out_config) {
 uint32_t FileSystem_WriteConfig(const Config *config) {
     return FileSystem_SaveConfig(config) == FR_OK;
 }
+
 
 void FileSystem_ConfigObserver(Config config) {
     TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
@@ -252,5 +253,3 @@ uint32_t FileSystem_WriteBitmap(const float *image, uint32_t size, const char *n
 
     return res == FR_OK;
 }
-
-

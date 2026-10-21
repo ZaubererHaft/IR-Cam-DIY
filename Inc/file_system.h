@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "config.h"
+#include "ff.h"
 
 uint32_t FileSystem_Init(uint8_t *buffer, Config *out_config);
 

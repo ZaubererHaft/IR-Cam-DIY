@@ -2,12 +2,13 @@
 #define CAM_USER_INTERFACE_H
 
 #include <stdint.h>
+#include "stdbool.h"
 
 #include "config.h"
 
-uint32_t UserInterface_Init(void);
+bool UserInterface_Init(void);
 
-int32_t UserInterface_ShowingAnyMenuOrDialog(void);
+bool UserInterface_ShowingAnyMenuOrDialog(void);
 
 void UserInterface_Draw(void);
 

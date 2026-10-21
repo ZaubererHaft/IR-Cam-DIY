@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-
 uint16_t TempToRGB565(float temp);
 uint16_t TempToGray565(float temp);
 uint16_t TempToGray565_Inverted(float temp);

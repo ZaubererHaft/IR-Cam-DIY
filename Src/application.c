@@ -62,6 +62,7 @@ void application_error_handler(void) {
 }
 
 
+
 void Task_Init(void) {
   HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
 
@@ -91,7 +92,7 @@ void Task_Init(void) {
     Error_Handler();
   }
 
-  MX_USB_DEVICE_Init();
+  //MX_USB_DEVICE_Init();
 
   if (MLX90640_Restart() != MLX90640_NO_ERROR) {
     Error_Handler();
