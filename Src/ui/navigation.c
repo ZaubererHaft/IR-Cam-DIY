@@ -1,9 +1,14 @@
 #include "navigation.h"
 #include "common.h"
 #include "gallery.h"
+#include "menu.h"
+
+#include <stddef.h>
+#include <stdint.h>
 
 static UIFrame default_frame;
 static UIFrame gallery_frame;
+static UIFrame menu_frame;
 
 static int32_t stack_ptr = -1;
 static UIFrame *nav_stack[5];
@@ -11,6 +16,9 @@ static UIFrame *nav_stack[5];
 static UIFrame *Navigation_FrameById(UIFrameIdentifier frame) {
     if (frame == FRAME_GALLERY) {
         return &gallery_frame;
+    }
+    if (frame == FRAME_MENU_OVERVIEW) {
+        return &menu_frame;
     }
     return &default_frame;
 }
@@ -27,6 +35,12 @@ void Navigation_InitById(UIFrameIdentifier frame_initial) {
     gallery_frame.stick_left_callback = Gallery_StickLeftMoved;
     gallery_frame.stick_right_callback = Gallery_StickRightMoved;
     gallery_frame.stick_pressed_callback = Gallery_StickPressed;
+
+    menu_frame.id = FRAME_MENU_OVERVIEW;
+    menu_frame.init_function = Menu_DrawInitial;
+    menu_frame.stick_down_callback = Menu_StickMovedDown;
+    menu_frame.stick_up_callback = Menu_StickMovedUp;
+    menu_frame.stick_pressed_callback = Menu_StickPressed;
 
     Navigation_NavigateToById(frame_initial);
 }

@@ -1,8 +1,6 @@
 #ifndef CAM_FRAME_H
 #define CAM_FRAME_H
 
-#include "ui_state.h"
-
 typedef enum UIFrameIdentifier_ {
     FRAME_DEFAULT,
     FRAME_MENU_OVERVIEW,

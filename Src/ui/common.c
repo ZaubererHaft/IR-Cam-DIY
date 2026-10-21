@@ -163,5 +163,5 @@ void Common_DrawInitial() {
 }
 
 void Common_StickPressed(void) {
-    Navigation_NavigateToById(FRAME_GALLERY);
+    Navigation_NavigateToById(FRAME_MENU_OVERVIEW);
 }
