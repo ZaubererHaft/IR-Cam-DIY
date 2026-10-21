@@ -13,6 +13,8 @@
 #define MARKER_X_INDEX_DEL 1
 #define MARKER_X_INDEX_NEXT 2
 
+#define PREVIEW_PIXEL_SIZE 4
+
 static uint32_t marker_index_x = MARKER_X_INDEX_NEXT;
 static uint32_t marker_index_y = MARKER_Y_BOTTOM;
 
@@ -33,44 +35,61 @@ static bool string_ends_with(const char *str, const char *suffix) {
 }
 
 
-static void Gallery_ClearCurrent() {
+static void Gallery_ClearImage() {
+    ILI9341_Draw_Rectangle(60, 70, 32 * PREVIEW_PIXEL_SIZE, 24 * PREVIEW_PIXEL_SIZE, BLACK);
 }
 
 
-static void Gallery_DrawCurrentFile() {
-    Gallery_ClearCurrent();
-
+static void Gallery_DrawCurrentImage() {
+    Gallery_ClearImage();
 
     if (available_files > 0) {
-        ILI9341_Draw_Text(files[curr_image_index], 100, 100, WHITE, 1, BLACK);
-    }
+        FIL fil;
+        BYTE byte_buffer;
+        UINT bytes_read;
 
+        FRESULT fr = f_open(&fil, files[curr_image_index], FA_READ);
 
-    /*
-    FIL fil;
-    FRESULT fr;
-    BYTE byte_buffer;
-    UINT bytes_read;
+        if (fr == FR_OK) {
+            fr = f_lseek(&fil, 66);
 
-    fr = f_open(&fil, current_file.fname, FA_READ);
-    if (fr != FR_OK) {
-        return false;
-    }
+            uint16_t pixel = 0;
+            bool le = true;
 
-    fr = f_lseek(&fil, 60);
+            uint16_t row = 0;
+            uint16_t col = 0;
 
-    do {
-        fr = f_read(&fil, &byte_buffer, 1, &bytes_read);
+            do {
+                fr = f_read(&fil, &byte_buffer, 1, &bytes_read);
+                if (fr != FR_OK) {
+                    break;
+                }
 
-        if (fr != FR_OK) {
-            break;
+                if (le) {
+                    pixel |= byte_buffer;
+                    le = false;
+                } else {
+                    pixel |= (byte_buffer << 8);
+                    le = true;
+
+                    ILI9341_Draw_Rectangle(60 + col * PREVIEW_PIXEL_SIZE, 70 + PREVIEW_PIXEL_SIZE * row,
+                                           PREVIEW_PIXEL_SIZE, PREVIEW_PIXEL_SIZE, pixel);
+
+                    pixel = 0;
+
+                    col++;
+                    if (col == 32) {
+                        row++;
+                        col = 0;
+                    }
+                }
+            } while (bytes_read > 0);
+
+            f_close(&fil);
+
+            ILI9341_Draw_Text(files[curr_image_index], 100, 200, WHITE, 1, BLACK);
         }
-
-        // Das gelesene Byte verarbeiten (z.B. auf der Konsole ausgeben)
-        //putchar(byte_buffer);
-    } while (bytes_read > 0);
-
-    f_close(&fil);*/
+    }
 }
 
 
@@ -140,7 +159,7 @@ void Gallery_Draw(UiState *state) {
 
     Gallery_ReadAllFiles();
     Gallery_RedrawNavigationBar();
-    Gallery_DrawCurrentFile();
+    Gallery_DrawCurrentImage();
 }
 
 void StickRightMoved(void) {
@@ -171,13 +190,12 @@ void StickDownMoved(void) {
 void StickPressed(void) {
     if (marker_index_y == MARKER_Y_TOP) {
         // ToDo, close gallery
-    }
-    else {
+    } else {
         if (marker_index_x == MARKER_X_INDEX_NEXT) {
             if (available_files > 0) {
                 curr_image_index = (curr_image_index + 1) % available_files;
 
-                Gallery_DrawCurrentFile();
+                Gallery_DrawCurrentImage();
             }
         } else if (marker_index_x == MARKER_X_INDEX_PREV) {
             if (available_files > 0) {
@@ -187,12 +205,10 @@ void StickPressed(void) {
                     curr_image_index = curr_image_index - 1;
                 }
 
-                Gallery_DrawCurrentFile();
+                Gallery_DrawCurrentImage();
             }
-        }
-        else if (marker_index_x == MARKER_X_INDEX_DEL) {
+        } else if (marker_index_x == MARKER_X_INDEX_DEL) {
             // ToDo, delete file
         }
     }
-
 }
