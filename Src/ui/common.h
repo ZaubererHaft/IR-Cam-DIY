@@ -1,8 +1,8 @@
 #ifndef CAM_COMMON_H
 #define CAM_COMMON_H
 
-#include "ui_state.h"
+void Common_DrawInitial(void);
 
-void Common_DrawInitial();
+void Common_StickPressed(void);
 
 #endif //CAM_COMMON_H

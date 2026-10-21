@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "navigation.h"
+#include "ui_state.h"
+
 
 static const uint16_t max_lvl = 3583;
 static GPIO_PinState old_stat1;
@@ -157,4 +160,8 @@ void Common_DrawInitial() {
     Common_DrawRecordState(&state);
     Common_DrawHeatmap(&state);
     Common_DrawBattery();
+}
+
+void Common_StickPressed(void) {
+    Navigation_NavigateToById(FRAME_GALLERY);
 }

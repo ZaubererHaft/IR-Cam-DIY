@@ -12,6 +12,11 @@ typedef enum UIFrameIdentifier_ {
 typedef struct UIFrame_ {
     UIFrameIdentifier id;
     void (*init_function)(void);
+    void (*stick_left_callback)(void);
+    void (*stick_right_callback)(void);
+    void (*stick_up_callback)(void);
+    void (*stick_down_callback)(void);
+    void (*stick_pressed_callback)(void);
 } UIFrame;
 
 void Frame_CleanUp(void);

@@ -1,10 +1,12 @@
 #include "gallery.h"
-
-#include <string.h>
-
 #include "ff.h"
 #include "ILI9341_DMA_driver.h"
 #include "ILI9341_GFX.h"
+
+#include <stdbool.h>
+#include <string.h>
+
+#include "navigation.h"
 
 #define MARKER_Y_TOP 0
 #define MARKER_Y_BOTTOM 1
@@ -183,34 +185,34 @@ void Gallery_DrawInitial() {
     Gallery_DrawCurrentImage();
 }
 
-void StickRightMoved(void) {
+void Gallery_StickRightMoved(void) {
     if (marker_index_x < MARKER_X_INDEX_NEXT && marker_index_y == MARKER_Y_BOTTOM) {
         marker_index_x++;
         Gallery_RedrawNavigationBar();
     }
 }
 
-void StickLeftMoved(void) {
+void Gallery_StickLeftMoved(void) {
     if (marker_index_x > MARKER_X_INDEX_PREV && marker_index_y == MARKER_Y_BOTTOM) {
         marker_index_x--;
         Gallery_RedrawNavigationBar();
     }
 }
 
-void StickUpMoved(void) {
+void Gallery_StickUpMoved(void) {
     marker_index_y = MARKER_Y_TOP;
     marker_index_x = MARKER_X_INDEX_NEXT;
     Gallery_RedrawNavigationBar();
 }
 
-void StickDownMoved(void) {
+void Gallery_StickDownMoved(void) {
     marker_index_y = MARKER_Y_BOTTOM;
     Gallery_RedrawNavigationBar();
 }
 
-void StickPressed(void) {
+void Gallery_StickPressed(void) {
     if (marker_index_y == MARKER_Y_TOP) {
-        // ToDo, close gallery
+        Navigation_NavigateBack();
     } else {
         if (marker_index_x == MARKER_X_INDEX_NEXT) {
             if (available_files > 0) {

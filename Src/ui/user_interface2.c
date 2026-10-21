@@ -39,18 +39,18 @@ void UserInterface_Loop(void) {
     // Read Navigation stick
     if (HAL_GetTick() - stick_lock_time > 100) {
         if (state.analog_data.stick_x - 2048 > 1500) {
-            StickLeftMoved();
+            Navigation_StickLeftMoved();
         } else if (state.analog_data.stick_x - 2048 < -1500) {
-            StickRightMoved();
+            Navigation_StickRightMoved();
         }
         if (state.analog_data.stick_y - 2048 > 1500) {
-            StickDownMoved();
+            Navigation_StickDownMoved();
         } else if (state.analog_data.stick_y - 2048 < -1500) {
-            StickUpMoved();
+            Navigation_StickUpMoved();
         }
 
         if (stick_z_pressed) {
-            StickPressed();
+            Navigation_StickPressed();
             stick_z_pressed = false;
         }
 

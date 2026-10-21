@@ -5,9 +5,10 @@
 static UIFrame default_frame;
 static UIFrame gallery_frame;
 
-static UIFrame *current_frame;
+static int32_t stack_ptr = -1;
+static UIFrame *nav_stack[5];
 
-static UIFrame *Navigaion_FrameById(UIFrameIdentifier frame) {
+static UIFrame *Navigation_FrameById(UIFrameIdentifier frame) {
     if (frame == FRAME_GALLERY) {
         return &gallery_frame;
     }
@@ -17,9 +18,15 @@ static UIFrame *Navigaion_FrameById(UIFrameIdentifier frame) {
 void Navigation_InitById(UIFrameIdentifier frame_initial) {
     default_frame.id = FRAME_DEFAULT;
     default_frame.init_function = Common_DrawInitial;
+    default_frame.stick_pressed_callback = Common_StickPressed;
 
     gallery_frame.id = FRAME_GALLERY;
     gallery_frame.init_function = Gallery_DrawInitial;
+    gallery_frame.stick_down_callback = Gallery_StickDownMoved;
+    gallery_frame.stick_up_callback = Gallery_StickUpMoved;
+    gallery_frame.stick_left_callback = Gallery_StickLeftMoved;
+    gallery_frame.stick_right_callback = Gallery_StickRightMoved;
+    gallery_frame.stick_pressed_callback = Gallery_StickPressed;
 
     Navigation_NavigateToById(frame_initial);
 }
@@ -27,13 +34,51 @@ void Navigation_InitById(UIFrameIdentifier frame_initial) {
 void Navigation_NavigateToById(UIFrameIdentifier frame) {
     Frame_CleanUp();
 
-    current_frame = Navigaion_FrameById(frame);
-    current_frame->init_function();
+    stack_ptr++;
+    nav_stack[stack_ptr] = Navigation_FrameById(frame);
+    nav_stack[stack_ptr]->init_function();
 }
 
 void Navigation_NavigateBack() {
+    Frame_CleanUp();
+
+    stack_ptr--;
+    nav_stack[stack_ptr]->init_function();
 }
 
 UIFrame *Navigation_CurrentFrame(void) {
-    return current_frame;
+    if (stack_ptr < 0) {
+        return NULL;
+    }
+    return nav_stack[stack_ptr];
+}
+
+void Navigation_StickLeftMoved(void) {
+    if (Navigation_CurrentFrame()->stick_left_callback != NULL) {
+        Navigation_CurrentFrame()->stick_left_callback();
+    }
+}
+
+void Navigation_StickRightMoved(void) {
+    if (Navigation_CurrentFrame()->stick_right_callback != NULL) {
+        Navigation_CurrentFrame()->stick_right_callback();
+    }
+}
+
+void Navigation_StickUpMoved(void) {
+    if (Navigation_CurrentFrame()->stick_up_callback != NULL) {
+        Navigation_CurrentFrame()->stick_up_callback();
+    }
+}
+
+void Navigation_StickDownMoved(void) {
+    if (Navigation_CurrentFrame()->stick_down_callback != NULL) {
+        Navigation_CurrentFrame()->stick_down_callback();
+    }
+}
+
+void Navigation_StickPressed(void) {
+    if (Navigation_CurrentFrame()->stick_pressed_callback != NULL) {
+        Navigation_CurrentFrame()->stick_pressed_callback();
+    }
 }

@@ -1,13 +1,12 @@
 #ifndef CAM_GALLERY_H
 #define CAM_GALLERY_H
 
-#include "ui_state.h"
-
 void Gallery_DrawInitial(void);
-void StickRightMoved(void);
-void StickLeftMoved(void);
-void StickUpMoved(void);
-void StickDownMoved(void);
-void StickPressed(void);
+
+void Gallery_StickRightMoved(void);
+void Gallery_StickLeftMoved(void);
+void Gallery_StickUpMoved(void);
+void Gallery_StickDownMoved(void);
+void Gallery_StickPressed(void);
 
 #endif //CAM_GALLERY_H
