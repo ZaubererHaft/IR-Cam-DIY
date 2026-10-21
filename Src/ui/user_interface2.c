@@ -25,7 +25,6 @@ bool UserInterface_Init(void) {
     ILI9341_Set_Rotation(SCREEN_HORIZONTAL_1);
 
     Navigation_InitById(FRAME_DEFAULT);
-    //Navigation_NavigateToById(FRAME_GALLERY);
 
     return true;
 }

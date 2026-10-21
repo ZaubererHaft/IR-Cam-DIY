@@ -6,9 +6,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "settings.h"
+
 static UIFrame default_frame;
 static UIFrame gallery_frame;
 static UIFrame menu_frame;
+static UIFrame settings_frame;
+static UIFrame settings_frame;
 
 static int32_t stack_ptr = -1;
 static UIFrame *nav_stack[5];
@@ -19,6 +23,9 @@ static UIFrame *Navigation_FrameById(UIFrameIdentifier frame) {
     }
     if (frame == FRAME_MENU_OVERVIEW) {
         return &menu_frame;
+    }
+    if (frame == FRAME_SETTINGS) {
+        return &settings_frame;
     }
     return &default_frame;
 }
@@ -41,6 +48,12 @@ void Navigation_InitById(UIFrameIdentifier frame_initial) {
     menu_frame.stick_down_callback = Menu_StickMovedDown;
     menu_frame.stick_up_callback = Menu_StickMovedUp;
     menu_frame.stick_pressed_callback = Menu_StickPressed;
+
+    settings_frame.id = FRAME_SETTINGS;
+    settings_frame.init_function = Settings_DrawInitial;
+    settings_frame.stick_down_callback = Settings_StickMovedDown;
+    settings_frame.stick_up_callback = Settings_StickMovedUp;
+    settings_frame.stick_pressed_callback = Settings_StickPressed;
 
     Navigation_NavigateToById(frame_initial);
 }

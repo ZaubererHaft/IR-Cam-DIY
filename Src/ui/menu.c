@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include "interface_callback.h"
 #include "navigation.h"
 
 typedef enum MENU_ {
@@ -71,5 +72,11 @@ void Menu_StickPressed(void) {
         Navigation_NavigateBack();
     } else if (menu_cursor_Y == MENU_GALLERY) {
         Navigation_NavigateToById(FRAME_GALLERY);
+    }
+    else if (menu_cursor_Y == MENU_SETTINGS) {
+        Navigation_NavigateToById(FRAME_SETTINGS);
+    }
+    else if (menu_cursor_Y == MENU_SAVE_IMAGE) {
+        InterfaceCallback_RequestSaveImage();
     }
 }

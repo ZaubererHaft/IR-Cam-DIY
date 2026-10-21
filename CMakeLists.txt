@@ -46,6 +46,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         Src/ui/common.c
         Src/ui/navigation.c
         Src/ui/frame.c
+        Src/ui/settings.c
+        Src/ui/settings.h
 )
 
 # Add STM32CubeMX generated sources

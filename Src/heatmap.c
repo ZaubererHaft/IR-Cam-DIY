@@ -4,7 +4,7 @@ static HeatmapFunction available_heatmaps[] = {
     &TempToMagma565_Fast, &TempToGray565, &TempToGray565_InvertedFast, &TempToRainbow565_Fast
   };
 
-static const char *heatmap_names[] = {" Magma", " Gray", " Gray (inv)", " Rainbow"};
+static const char *heatmap_names[] = {"Magma", "Gray", "Gray (i)", "Rainbow"};
 
 HeatmapFunction Heatmap_GetByIndex(uint32_t index) {
     if (index >= Heatmap_GetSize()) {
