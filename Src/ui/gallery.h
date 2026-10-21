@@ -5,4 +5,10 @@
 
 void Gallery_Draw(UiState *state);
 
+void StickRightMoved(void);
+void StickLeftMoved(void);
+void StickUpMoved(void);
+void StickDownMoved(void);
+void StickPressed(void);
+
 #endif //CAM_GALLERY_H

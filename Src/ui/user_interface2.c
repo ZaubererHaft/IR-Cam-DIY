@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <sys/stat.h>
 
 #include "common.h"
@@ -13,6 +14,9 @@ static UiState state;
 
 float tMin = 15.0f;
 float tMax = 40.0f;
+
+static bool stick_z_pressed = false;
+static uint32_t stick_lock_time;
 
 bool UserInterface_Init(void) {
     ILI9341_Init();
@@ -31,6 +35,26 @@ bool UserInterface_ShowingAnyMenuOrDialog(void) {
 
 
 void UserInterface_Draw(void) {
+    if (HAL_GetTick() - stick_lock_time > 100) {
+        if (state.analog_data.stick_x - 2048 > 1500) {
+            StickLeftMoved();
+        } else if (state.analog_data.stick_x - 2048 < -1500) {
+            StickRightMoved();
+        }
+        if (state.analog_data.stick_y - 2048 > 1500) {
+            StickDownMoved();
+        } else if (state.analog_data.stick_y - 2048 < -1500) {
+            StickUpMoved();
+        }
+
+        if (stick_z_pressed) {
+            StickPressed();
+            stick_z_pressed = false;
+        }
+
+        stick_lock_time = HAL_GetTick();
+    }
+
     if (state.need_redraw) {
         Common_Draw(&state);
 
@@ -62,10 +86,6 @@ void UserInterface_ShowError(const char *text) {
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (GPIO_Pin == STICK_Z_Pin) {
-        if (state.current_frame == FRAME_DEFAULT) {
-            state.current_frame = FRAME_MENU_OVERVIEW;
-        }
-
-        state.need_redraw = true;
+        stick_z_pressed = true;
     }
 }

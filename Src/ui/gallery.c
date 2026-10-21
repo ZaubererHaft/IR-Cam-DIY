@@ -6,6 +6,20 @@
 #include "ILI9341_DMA_driver.h"
 #include "ILI9341_GFX.h"
 
+#define MARKER_Y_TOP 0
+#define MARKER_Y_BOTTOM 1
+
+#define MARKER_X_INDEX_PREV 0
+#define MARKER_X_INDEX_DEL 1
+#define MARKER_X_INDEX_NEXT 2
+
+static uint32_t marker_index_x = MARKER_X_INDEX_NEXT;
+static uint32_t marker_index_y = MARKER_Y_BOTTOM;
+
+static uint32_t available_files = 0;
+static uint32_t curr_image_index = 0;
+
+static char files[1000][12];
 
 static bool string_ends_with(const char *str, const char *suffix) {
     if (!str || !suffix) return false;
@@ -18,33 +32,167 @@ static bool string_ends_with(const char *str, const char *suffix) {
     return strcmp(str + str_len - suffix_len, suffix) == 0;
 }
 
-void Gallery_Draw(UiState *state) {
-    FRESULT res;
-    DIR dir;
-    FILINFO fno;
 
-    res = f_opendir(&dir, "");
-    if (res == FR_OK) {
-        int x = 80;
-        int y = 40;
+static void Gallery_ClearCurrent() {
+}
 
-        ILI9341_Draw_Text("Gallery", x, y, WHITE, 2, BLACK);
-        y += 20;
 
+static void Gallery_DrawCurrentFile() {
+    Gallery_ClearCurrent();
+
+
+    if (available_files > 0) {
+        ILI9341_Draw_Text(files[curr_image_index], 100, 100, WHITE, 1, BLACK);
+    }
+
+
+    /*
+    FIL fil;
+    FRESULT fr;
+    BYTE byte_buffer;
+    UINT bytes_read;
+
+    fr = f_open(&fil, current_file.fname, FA_READ);
+    if (fr != FR_OK) {
+        return false;
+    }
+
+    fr = f_lseek(&fil, 60);
+
+    do {
+        fr = f_read(&fil, &byte_buffer, 1, &bytes_read);
+
+        if (fr != FR_OK) {
+            break;
+        }
+
+        // Das gelesene Byte verarbeiten (z.B. auf der Konsole ausgeben)
+        //putchar(byte_buffer);
+    } while (bytes_read > 0);
+
+    f_close(&fil);*/
+}
+
+
+static void Gallery_ReadAllFiles() {
+    DIR current_dir;
+    FILINFO current_file;
+    FRESULT fresult = FR_OK;
+
+    available_files = 0;
+
+    fresult = f_opendir(&current_dir, "");
+
+    if (fresult == FR_OK) {
         for (;;) {
-            res = f_readdir(&dir, &fno);
-            if (res != FR_OK || fno.fname[0] == 0) break;
+            fresult = f_readdir(&current_dir, &current_file);
+            if (fresult != FR_OK) {
+                break;
+            }
 
-            if (fno.fname[0] == '.') continue;
+            if (current_file.fname[0] == 0) {
+                break;
+            }
 
-            if (!(fno.fattrib & AM_DIR)) {
-                if (string_ends_with(fno.fname, ".bmp")) {
-                    ILI9341_Draw_Text(fno.fname, x, y, WHITE, 2, BLACK);
-                    y += 20;
-                }
+            if (current_file.fname[0] == '.') {
+                continue;
+            }
+
+            if (current_file.fattrib & AM_DIR) {
+                continue;
+            }
+
+            if (string_ends_with(current_file.fname, ".bmp")) {
+                strcpy(files[available_files], current_file.fname);
+                available_files++;
             }
         }
-        f_closedir(&dir);
+
+        f_closedir(&current_dir);
+    }
+}
+
+static void Draw_Element(const char *text, uint32_t y_pos, uint32_t x_pos, uint32_t index_y, uint32_t index_x) {
+    uint16_t color_foreground = WHITE;
+    uint16_t color_background = BLACK;
+
+    if (marker_index_x == index_x && marker_index_y == index_y) {
+        color_foreground = BLACK;
+        color_background = WHITE;
+    } else {
+        color_foreground = WHITE;
+        color_background = BLACK;
+    }
+
+    ILI9341_Draw_Text(text, x_pos, y_pos, color_foreground, 2, color_background);
+}
+
+static void Gallery_RedrawNavigationBar() {
+    Draw_Element(" <", 220, 20, MARKER_Y_BOTTOM, MARKER_X_INDEX_PREV);
+    Draw_Element(" Del ", 220, 120, MARKER_Y_BOTTOM, MARKER_X_INDEX_DEL);
+    Draw_Element(" >", 220, 220, MARKER_Y_BOTTOM, MARKER_X_INDEX_NEXT);
+
+    Draw_Element(" x", 40, 220, MARKER_Y_TOP, MARKER_X_INDEX_NEXT);
+}
+
+void Gallery_Draw(UiState *state) {
+    ILI9341_Draw_Text("Gallery", 80, 40, WHITE, 2, BLACK);
+
+    Gallery_ReadAllFiles();
+    Gallery_RedrawNavigationBar();
+    Gallery_DrawCurrentFile();
+}
+
+void StickRightMoved(void) {
+    if (marker_index_x < MARKER_X_INDEX_NEXT && marker_index_y == MARKER_Y_BOTTOM) {
+        marker_index_x++;
+        Gallery_RedrawNavigationBar();
+    }
+}
+
+void StickLeftMoved(void) {
+    if (marker_index_x > MARKER_X_INDEX_PREV && marker_index_y == MARKER_Y_BOTTOM) {
+        marker_index_x--;
+        Gallery_RedrawNavigationBar();
+    }
+}
+
+void StickUpMoved(void) {
+    marker_index_y = MARKER_Y_TOP;
+    marker_index_x = MARKER_X_INDEX_NEXT;
+    Gallery_RedrawNavigationBar();
+}
+
+void StickDownMoved(void) {
+    marker_index_y = MARKER_Y_BOTTOM;
+    Gallery_RedrawNavigationBar();
+}
+
+void StickPressed(void) {
+    if (marker_index_y == MARKER_Y_TOP) {
+        // ToDo, close gallery
+    }
+    else {
+        if (marker_index_x == MARKER_X_INDEX_NEXT) {
+            if (available_files > 0) {
+                curr_image_index = (curr_image_index + 1) % available_files;
+
+                Gallery_DrawCurrentFile();
+            }
+        } else if (marker_index_x == MARKER_X_INDEX_PREV) {
+            if (available_files > 0) {
+                if (curr_image_index <= 0) {
+                    curr_image_index = available_files - 1;
+                } else {
+                    curr_image_index = curr_image_index - 1;
+                }
+
+                Gallery_DrawCurrentFile();
+            }
+        }
+        else if (marker_index_x == MARKER_X_INDEX_DEL) {
+            // ToDo, delete file
+        }
     }
 
 }
