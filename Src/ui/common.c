@@ -64,9 +64,9 @@ static void Common_DrawHeader(void) {
 }
 
 static void Common_DrawRecordState(UiState *state) {
-    //if (state->current_frame == FRAME_DEFAULT) {
-      //  ILI9341_Draw_Filled_Circle(304, 12, 8, RED);
-    //} else
+    if (Navigation_CurrentFrame()->id == FRAME_DEFAULT) {
+        ILI9341_Draw_Filled_Circle(304, 12, 8, RED);
+    } else
     {
         ILI9341_Draw_Rectangle(300, 4, 4, 16, LIGHTGREY);
         ILI9341_Draw_Rectangle(306, 4, 4, 16, LIGHTGREY);

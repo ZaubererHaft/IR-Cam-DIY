@@ -109,3 +109,15 @@ void Navigation_StickPressed(void) {
         Navigation_CurrentFrame()->stick_pressed_callback();
     }
 }
+
+void Navigation_BatteryStateChanged(BatteryState new_state) {
+}
+
+void Navigation_ConfigChanged(Config config) {
+}
+
+void Navigation_AnimationCallback(void) {
+}
+
+void Navigation_FPSChanged(uint32_t fps) {
+}

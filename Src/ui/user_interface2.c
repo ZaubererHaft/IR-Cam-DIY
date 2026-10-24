@@ -11,7 +11,17 @@
 #include "navigation.h"
 #include "ui_state.h"
 
+
+typedef struct AnalogData_ {
+    uint16_t stick_x;
+    uint16_t stick_y;
+    uint16_t battery_level;
+} AnalogData;
+
+static AnalogData analog_data;
 static UiState state;
+static BatteryState battery_state;
+
 
 float tMin = 15.0f;
 float tMax = 40.0f;
@@ -34,17 +44,41 @@ bool UserInterface_ShowingAnyMenuOrDialog(void) {
 }
 
 void UserInterface_Loop(void) {
+    // FPS
+    Navigation_FPSChanged(100);
+
+    // Read battery management chip
+    const GPIO_PinState stat1 = !HAL_GPIO_ReadPin(BATTCHARGING_GPIO_Port, BATTCHARGING_Pin);
+    const GPIO_PinState stat2 = !HAL_GPIO_ReadPin(BATTFULL_GPIO_Port, BATTFULL_Pin);
+    const GPIO_PinState npg = !HAL_GPIO_ReadPin(EXT_POWER_GPIO_Port, EXT_POWER_Pin);
+
+    BatteryState new_state;
+    if (stat1 && !stat2 && npg) {
+        new_state.chip_state = BATTERY_CHARGING;
+    } else if (stat1 && !stat2 && !npg) {
+        new_state.chip_state = BATTERY_LOW_BATTERY;
+    } else if (!stat1 && !stat2 && npg) {
+        new_state.chip_state = BATTERY_NOT_AVAILABLE;
+    } else {
+        new_state.chip_state = BATTERY_DEFAULT;
+    }
+    new_state.battery_level = analog_data.battery_level;
+
+    if (new_state.battery_level != battery_state.battery_level || new_state.chip_state != battery_state.chip_state) {
+        Navigation_BatteryStateChanged(new_state);
+        battery_state = new_state;
+    }
 
     // Read Navigation stick
     if (HAL_GetTick() - stick_lock_time > 100) {
-        if (state.analog_data.stick_x - 2048 > 1500) {
+        if (analog_data.stick_x - 2048 > 1500) {
             Navigation_StickLeftMoved();
-        } else if (state.analog_data.stick_x - 2048 < -1500) {
+        } else if (analog_data.stick_x - 2048 < -1500) {
             Navigation_StickRightMoved();
         }
-        if (state.analog_data.stick_y - 2048 > 1500) {
+        if (analog_data.stick_y - 2048 > 1500) {
             Navigation_StickDownMoved();
-        } else if (state.analog_data.stick_y - 2048 < -1500) {
+        } else if (analog_data.stick_y - 2048 < -1500) {
             Navigation_StickUpMoved();
         }
 
@@ -55,18 +89,22 @@ void UserInterface_Loop(void) {
 
         stick_lock_time = HAL_GetTick();
     }
+
+    // animation loop
+    Navigation_AnimationCallback();
 }
 
 void UserInterface_RedrawIRImageIfNecessary(float *image) {
 }
 
 void UserInterface_PutAnalogData(const uint16_t data[3]) {
-    state.analog_data.stick_x = data[0];
-    state.analog_data.stick_y = data[1];
-    state.analog_data.battery_level = data[2];
+    analog_data.stick_x = data[0];
+    analog_data.stick_y = data[1];
+    analog_data.battery_level = data[2];
 }
 
 void UserInterface_ConfigObserver(Config config) {
+    Navigation_ConfigChanged(config);
 }
 
 void UserInterface_ShowError(const char *text) {

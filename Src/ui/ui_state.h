@@ -7,28 +7,23 @@
 #include "config.h"
 #include "main.h"
 
-typedef struct AnalogData_ {
-    uint16_t stick_x;
-    uint16_t stick_y;
-    uint16_t battery_level;
-} AnalogData;
+
+typedef enum BatteryChipState_ {
+    BATTERY_CHARGING,
+    BATTERY_LOW_BATTERY,
+    BATTERY_NOT_AVAILABLE,
+    BATTERY_DEFAULT
+} BatteryChipState;
 
 typedef struct BatteryState_ {
-    GPIO_PinState old_stat1;
-    GPIO_PinState old_stat2;
-    GPIO_PinState old_npg;
-    bool initial_draw_battery;
+    BatteryChipState chip_state;
     uint16_t battery_level;
-    uint16_t old_battery_leve;
-    bool last_anim_charge;
 } BatteryState;
 
 typedef struct UiState_ {
-    bool need_redraw;
-    uint32_t fps;
     Config app_config;
-    AnalogData analog_data;
     BatteryState battery_state;
+    uint32_t fps;
 } UiState;
 
 #endif //CAM_UI_STATE_H
