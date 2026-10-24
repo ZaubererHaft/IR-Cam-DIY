@@ -5,21 +5,16 @@
 
 #include <math.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "navigation.h"
 #include "ui_state.h"
 
+#define BATT_MAX_LVL 3583
 
-static const uint16_t max_lvl = 3583;
-static GPIO_PinState old_stat1;
-static GPIO_PinState old_stat2;
-static GPIO_PinState old_npg;
-static bool initial_draw_battery = 1;
-static uint16_t battery_level = max_lvl;
-static uint16_t old_battery_level = 0;
-static bool last_anim_charge = 1;
+static uint32_t last_batt_anim_time = 0;
+static BatteryState battery_state;
+static bool redraw_battery_state = true;
 
 static void Common_CleanUp(void) {
     ILI9341_Draw_Rectangle(0, 0, 320, 20, BLACK);
@@ -66,86 +61,74 @@ static void Common_DrawHeader(void) {
 static void Common_DrawRecordState(UiState *state) {
     if (Navigation_CurrentFrame()->id == FRAME_DEFAULT) {
         ILI9341_Draw_Filled_Circle(304, 12, 8, RED);
-    } else
-    {
+    } else {
         ILI9341_Draw_Rectangle(300, 4, 4, 16, LIGHTGREY);
         ILI9341_Draw_Rectangle(306, 4, 4, 16, LIGHTGREY);
     }
 }
 
-static void Common_DrawBattery(void) {
-    GPIO_PinState stat1 = !HAL_GPIO_ReadPin(BATTCHARGING_GPIO_Port, BATTCHARGING_Pin);
-    GPIO_PinState stat2 = !HAL_GPIO_ReadPin(BATTFULL_GPIO_Port, BATTFULL_Pin);
-    GPIO_PinState npg = !HAL_GPIO_ReadPin(EXT_POWER_GPIO_Port, EXT_POWER_Pin);
+static void Common_DrawBattery() {
+    static bool anim_switch = false;
+    uint32_t x = 260;
+    uint32_t y = 3;
 
-    if (initial_draw_battery || stat1 != old_stat1 || stat2 != old_stat2 || old_npg != npg || abs(
-            battery_level - old_battery_level) >= 50 || (
-            stat1 && !stat2 && npg)) {
+    // Clean up
+    ILI9341_Draw_Rectangle(100, 0, 270, 25, BLACK);
 
-        initial_draw_battery = false;
-        old_stat1 = stat1;
-        old_stat2 = stat2;
-        old_npg = npg;
+    // Battery frame
+    uint16_t battery_bar_color = WHITE;
 
-        uint32_t x = 260;
-        uint32_t y = 3;
+    if (battery_state.chip_state == BATTERY_CHARGE_COMPLETE) {
+        battery_bar_color = GREEN;
+    }
 
-        // Battery frame
-        uint16_t battery_bar_color = WHITE;
-        if (!stat1 && stat2 && npg) {
-            //charging complete -> green
-            battery_bar_color = GREEN;
+    // ca. 4.2 V Ladeschlusspannung
+    // spannungsteiler 100 - 220 -> max 2.88 V Spannung
+    // -> 0.875 Maximal von 3.3 V erreichbar
+    // -> 0.875 * 4096 = 3583 sind 100 % batteriespannung
+    char buff[20] = {};
+
+    // Battery level in numbers
+    const uint32_t lvl_perc = (uint32_t) ((float) battery_state.battery_level / (float) BATT_MAX_LVL * 100.0f);
+    snprintf(buff, sizeof(buff), "%lu%%", lvl_perc);
+    ILI9341_Draw_Text(buff, x - 55, 0, WHITE, 2, BLACK);
+
+    // Battery frame
+    ILI9341_Draw_Hollow_Rectangle_Coord(x - 3, 0, x + 18, y + 14 + 2, WHITE);
+    ILI9341_Draw_Rectangle(x + 18, y + 1, 3, 10, WHITE);
+
+    if (battery_state.chip_state == BATTERY_CHARGING) {
+        // Two bars
+        ILI9341_Draw_Rectangle(x, y, 4, 14, battery_bar_color);
+        ILI9341_Draw_Rectangle(x + 6, y, 4, 14, battery_bar_color);
+
+        // charge in progress -> blink last bar
+        if (anim_switch) {
+            ILI9341_Draw_Rectangle(x + 12, y, 4, 14, battery_bar_color);
+            anim_switch = false;
+        } else {
+            ILI9341_Draw_Rectangle(x + 12, y, 4, 14, BLACK);
+            anim_switch = true;
+        }
+    } else if (battery_state.chip_state != BATTERY_LOW_BATTERY) {
+        // all other cases than LBO (low battery) -> add bars
+        if (lvl_perc < 25) {
+            battery_bar_color = RED;
         }
 
-        // ca. 4.2 V Ladeschlusspannung
-        // spannungsteiler 100 - 220 -> max 2.88 V Spannung
-        // -> 0.875 Maximal von 3.3 V erreichbar
-        // -> 0.875 * 4096 = 3583 sind 100 % batteriespannung
-        char buff[20] = {};
+        ILI9341_Draw_Rectangle(x, y, 4, 14, battery_bar_color);
 
-        // Battery level in numbers
-        uint32_t lvl_perc = (uint32_t) ((float) battery_level / (float) max_lvl * 100.0f);
-        snprintf(buff, sizeof(buff), "%lu%%", lvl_perc);
-        ILI9341_Draw_Text(buff, x - 55, 0, WHITE, 2, BLACK);
-        old_battery_level = battery_level;
-
-        // Battery frame
-        ILI9341_Draw_Hollow_Rectangle_Coord(x - 3, 0, x + 18, y + 14 + 2, WHITE);
-        ILI9341_Draw_Rectangle(x + 18, y + 1, 3, 10, WHITE);
-
-        if (stat1 && !stat2 && npg) {
-            // Two bars
-            ILI9341_Draw_Rectangle(x, y, 4, 14, battery_bar_color);
+        if (lvl_perc > 50) {
             ILI9341_Draw_Rectangle(x + 6, y, 4, 14, battery_bar_color);
+        }
 
-            // charge in progress -> blink last bar
-            if (last_anim_charge) {
-                ILI9341_Draw_Rectangle(x + 12, y, 4, 14, battery_bar_color);
-                last_anim_charge = false;
-            } else {
-                ILI9341_Draw_Rectangle(x + 12, y, 4, 14, BLACK);
-                last_anim_charge = true;
-            }
-        } else if (!(stat1 && !stat2 && !npg)) {
-            // all other cases than LBO (low battery) -> add bars
-            if (lvl_perc < 25) {
-                battery_bar_color = RED;
-            }
+        if (lvl_perc > 75) {
+            ILI9341_Draw_Rectangle(x + 12, y, 4, 14, battery_bar_color);
+        }
 
-            ILI9341_Draw_Rectangle(x, y, 4, 14, battery_bar_color);
-
-            if (lvl_perc > 50) {
-                ILI9341_Draw_Rectangle(x + 6, y, 4, 14, battery_bar_color);
-            }
-
-            if (lvl_perc > 75) {
-                ILI9341_Draw_Rectangle(x + 12, y, 4, 14, battery_bar_color);
-            }
-
-            if (!stat1 && !stat2 && npg) {
-                // No battery or standby -> battery crossed out
-                ILI9341_Draw_Rectangle(x - 4, y + 5, 26, 2, RED);
-            }
+        if (battery_state.chip_state == BATTERY_NOT_AVAILABLE) {
+            // No battery or standby -> battery crossed out
+            ILI9341_Draw_Rectangle(x - 4, y + 5, 26, 2, RED);
         }
     }
 }
@@ -164,4 +147,18 @@ void Common_DrawInitial() {
 
 void Common_StickPressed(void) {
     Navigation_NavigateToById(FRAME_MENU_OVERVIEW);
+}
+
+void Common_BatteryStateChanged(BatteryState state) {
+    battery_state = state;
+    redraw_battery_state = true;
+}
+
+void Common_AnimationHandler(void) {
+    if (HAL_GetTick() - last_batt_anim_time > 1000 && (
+            redraw_battery_state || battery_state.chip_state == BATTERY_CHARGING)) {
+        Common_DrawBattery();
+        last_batt_anim_time = HAL_GetTick();
+        redraw_battery_state = false;
+    }
 }

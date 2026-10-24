@@ -12,6 +12,7 @@ typedef enum BatteryChipState_ {
     BATTERY_CHARGING,
     BATTERY_LOW_BATTERY,
     BATTERY_NOT_AVAILABLE,
+    BATTERY_CHARGE_COMPLETE,
     BATTERY_DEFAULT
 } BatteryChipState;
 

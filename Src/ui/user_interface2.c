@@ -22,7 +22,6 @@ static AnalogData analog_data;
 static UiState state;
 static BatteryState battery_state;
 
-
 float tMin = 15.0f;
 float tMax = 40.0f;
 
@@ -59,12 +58,15 @@ void UserInterface_Loop(void) {
         new_state.chip_state = BATTERY_LOW_BATTERY;
     } else if (!stat1 && !stat2 && npg) {
         new_state.chip_state = BATTERY_NOT_AVAILABLE;
+    } else if (!stat1 && stat2 && npg) {
+        new_state.chip_state = BATTERY_CHARGE_COMPLETE;
     } else {
         new_state.chip_state = BATTERY_DEFAULT;
     }
+
     new_state.battery_level = analog_data.battery_level;
 
-    if (new_state.battery_level != battery_state.battery_level || new_state.chip_state != battery_state.chip_state) {
+    if (abs(new_state.battery_level - battery_state.battery_level) >= 50 || new_state.chip_state != battery_state.chip_state) {
         Navigation_BatteryStateChanged(new_state);
         battery_state = new_state;
     }
