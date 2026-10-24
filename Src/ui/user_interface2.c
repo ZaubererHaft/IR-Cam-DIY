@@ -6,10 +6,8 @@
 #include "ILI9341_DMA_driver.h"
 #include "ILI9341_GFX.h"
 #include "stdbool.h"
-#include "gallery.h"
-#include "menu.h"
 #include "navigation.h"
-#include "ui_state.h"
+#include "battery_state.h"
 
 
 typedef struct AnalogData_ {
@@ -19,7 +17,6 @@ typedef struct AnalogData_ {
 } AnalogData;
 
 static AnalogData analog_data;
-static UiState state;
 static BatteryState battery_state;
 
 float tMin = 15.0f;
@@ -27,6 +24,9 @@ float tMax = 40.0f;
 
 static bool stick_z_pressed = false;
 static uint32_t stick_lock_time;
+
+static uint32_t frames = 0;
+static uint32_t frames_counter = 0;
 
 bool UserInterface_Init(void) {
     ILI9341_Init();
@@ -43,9 +43,6 @@ bool UserInterface_ShowingAnyMenuOrDialog(void) {
 }
 
 void UserInterface_Loop(void) {
-    // FPS
-    Navigation_FPSChanged(100);
-
     // Read battery management chip
     const GPIO_PinState stat1 = !HAL_GPIO_ReadPin(BATTCHARGING_GPIO_Port, BATTCHARGING_Pin);
     const GPIO_PinState stat2 = !HAL_GPIO_ReadPin(BATTFULL_GPIO_Port, BATTFULL_Pin);
@@ -66,7 +63,8 @@ void UserInterface_Loop(void) {
 
     new_state.battery_level = analog_data.battery_level;
 
-    if (abs(new_state.battery_level - battery_state.battery_level) >= 50 || new_state.chip_state != battery_state.chip_state) {
+    if (abs(new_state.battery_level - battery_state.battery_level) >= 50 || new_state.chip_state != battery_state.
+        chip_state) {
         Navigation_BatteryStateChanged(new_state);
         battery_state = new_state;
     }
@@ -94,6 +92,15 @@ void UserInterface_Loop(void) {
 
     // animation loop
     Navigation_AnimationCallback();
+
+    // FPS
+    frames++;
+
+    if (HAL_GetTick() - frames_counter > 1000) {
+        Navigation_FPSChanged(frames);
+        frames = 0;
+        frames_counter = HAL_GetTick();
+    }
 }
 
 void UserInterface_RedrawIRImageIfNecessary(float *image) {

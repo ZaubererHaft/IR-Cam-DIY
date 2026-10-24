@@ -2,7 +2,8 @@
 #define CAM_NAVIGATION_H
 
 #include "frame.h"
-#include "ui_state.h"
+#include "battery_state.h"
+#include "config.h"
 
 void Navigation_InitById(UIFrameIdentifier frame_initial);
 

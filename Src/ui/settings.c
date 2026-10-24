@@ -11,6 +11,7 @@
 
 static uint16_t menu_cursor_Y;
 static uint16_t requested_heatmap;
+static Config curr_config;
 
 typedef enum MENU_ {
     MENU_HEATMAP,
@@ -36,8 +37,7 @@ static void DrawMenuLine(const char *text, uint16_t x, uint16_t *y, uint16_t lin
     ILI9341_Draw_Text(text, x, *y, color_foreground, 2, color_background);
 }
 
-
-void Settings_DrawInitial(void) {
+void Settings_Redraw(void) {
     uint16_t y = 80;
     uint16_t x = 15;
 
@@ -51,26 +51,32 @@ void Settings_DrawInitial(void) {
     DrawMenuLine(" Back ", x, &y, MENU_BACK);
 }
 
+
+void Settings_DrawInitial(void) {
+    requested_heatmap = curr_config.heatmap_index;
+    Settings_Redraw();
+}
+
 void Settings_StickMovedUp(void) {
     if (menu_cursor_Y <= 0) {
-        menu_cursor_Y = MENU_HEATMAP;
+        menu_cursor_Y = MENU_BACK;
     } else {
         menu_cursor_Y--;
     }
 
-    Settings_DrawInitial();
+    Settings_Redraw();
 
 }
 
 void Settings_StickMovedDown(void) {
     menu_cursor_Y = (menu_cursor_Y + 1) % (MENU_BACK + 1);
-    Settings_DrawInitial();
+    Settings_Redraw();
 }
 
 void Settings_StickPressed(void) {
     if (menu_cursor_Y == MENU_HEATMAP) {
         requested_heatmap = (requested_heatmap + 1) % Heatmap_GetSize();
-        Settings_DrawInitial();
+        Settings_Redraw();
     }
     else if (menu_cursor_Y == MENU_SAVE) {
         InterfaceCallback_RequestNewHeatmap(requested_heatmap);
@@ -79,4 +85,10 @@ void Settings_StickPressed(void) {
     else if (menu_cursor_Y == MENU_BACK) {
         Navigation_NavigateBack();
     }
+}
+
+void Settings_ConfigChanged(Config config) {
+    requested_heatmap = config.heatmap_index;
+
+    curr_config = config;
 }

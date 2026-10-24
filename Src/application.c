@@ -44,145 +44,144 @@ static uint32_t inform_observers = 1;
 
 
 void application_main(void) {
-  Task_Init();
+    Task_Init();
 
-  while (1) {
-    Task_ReadIRData();
-    Task_ReadAnalogData();
-    Task_UserInterface();
-    Task_WriteImage();
-    Task_SynchConfig();
-    Task_BlinkyDog();
-    Task_InformObservers();
-  }
+    while (1) {
+        Task_ReadIRData();
+        Task_ReadAnalogData();
+        Task_UserInterface();
+        Task_WriteImage();
+        Task_SynchConfig();
+        Task_BlinkyDog();
+        Task_InformObservers();
+    }
 }
 
 void application_error_handler(void) {
-  UserInterface_ShowError("Error");
+    UserInterface_ShowError("Error");
 }
 
 
-
 void Task_Init(void) {
-  HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
 
-  Config_AddObserver(UserInterface_ConfigObserver);
-  Config_AddObserver(FileSystem_ConfigObserver);
-  Config_AddObserver(MLX90640_ConfigObserver);
+    Config_AddObserver(UserInterface_ConfigObserver);
+    Config_AddObserver(FileSystem_ConfigObserver);
+    Config_AddObserver(MLX90640_ConfigObserver);
 
-  if (!UserInterface_Init()) {
-    Error_Handler();
-  }
+    if (!Flash_Init()) {
+        Error_Handler();
+    }
 
-  if (!Analog_PollADCData(adc_data)) {
-    Error_Handler();
-  }
+    if (!FileSystem_Init(sector_backup, &config)) {
+        Error_Handler();
+    }
 
-  if (!Flash_Init()) {
-    Error_Handler();
-  }
+    Config_InformObservers(config);
 
-  if (!FileSystem_Init(sector_backup, &config)) {
-    Error_Handler();
-  }
+    if (!Analog_PollADCData(adc_data)) {
+        Error_Handler();
+    }
 
-  Config_InformObservers(config);
+    if (!UserInterface_Init()) {
+        Error_Handler();
+    }
 
-// if (MLX90640_Init() != MLX90640_NO_ERROR) {
-//   Error_Handler();
-// }
+    if (MLX90640_Init() != MLX90640_NO_ERROR) {
+        Error_Handler();
+    }
 
-// //MX_USB_DEVICE_Init();
+    // //MX_USB_DEVICE_Init();
 
-// if (MLX90640_Restart() != MLX90640_NO_ERROR) {
-//   Error_Handler();
-// }
+    if (MLX90640_Restart() != MLX90640_NO_ERROR) {
+        Error_Handler();
+    }
 
-  time = HAL_GetTick();
+    time = HAL_GetTick();
 }
 
 
 void Task_ReadIRData(void) {
-  if (UserInterface_ShowingAnyMenuOrDialog()) {
-    menu_fresh_opened = 1;
-    MLX90640_ReadAndDisplay(0);
-  } else {
-    if (menu_fresh_opened) {
-      // menu closed -> restart
-      MLX90640_Restart();
+    if (UserInterface_ShowingAnyMenuOrDialog()) {
+        menu_fresh_opened = 1;
+        MLX90640_ReadAndDisplay(0);
     } else {
-      MLX90640_ReadAndDisplay(1);
+        if (menu_fresh_opened) {
+            // menu closed -> restart
+            MLX90640_Restart();
+        } else {
+            MLX90640_ReadAndDisplay(1);
+        }
+        menu_fresh_opened = 0;
     }
-    menu_fresh_opened = 0;
-  }
 }
 
 void Task_ReadAnalogData(void) {
-  if (UserInterface_ShowingAnyMenuOrDialog() || HAL_GetTick() - time_analog > 5000) {
-    if (!Analog_PollADCData(adc_data)) {
-      Error_Handler();
+    if (UserInterface_ShowingAnyMenuOrDialog() || HAL_GetTick() - time_analog > 5000) {
+        if (!Analog_PollADCData(adc_data)) {
+            Error_Handler();
+        }
+        time_analog = HAL_GetTick();
     }
-    time_analog = HAL_GetTick();
-  }
 
-  UserInterface_PutAnalogData(adc_data);
+    UserInterface_PutAnalogData(adc_data);
 }
 
 
 void Task_UserInterface(void) {
-  UserInterface_Loop();
-  UserInterface_RedrawIRImageIfNecessary(MLX90640_GetIRImage());
+    UserInterface_Loop();
+    UserInterface_RedrawIRImageIfNecessary(MLX90640_GetIRImage());
 }
 
 
 void Task_WriteImage(void) {
-  if (save_image) {
-    char buff[32] = {0};
-    int32_t written = snprintf(buff, sizeof(buff), "img%lu.bmp", config.image_counter);
-    if (written > 0) {
-      uint32_t status = FileSystem_WriteBitmap(MLX90640_GetIRImage(), 32 * 24, buff);
-      config.image_counter++;
-      synch_config = 1;
+    if (save_image) {
+        char buff[32] = {0};
+        int32_t written = snprintf(buff, sizeof(buff), "img%lu.bmp", config.image_counter);
+        if (written > 0) {
+            uint32_t status = FileSystem_WriteBitmap(MLX90640_GetIRImage(), 32 * 24, buff);
+            config.image_counter++;
+            synch_config = 1;
 
-      if (!status) {
-        Error_Handler();
-      }
+            if (!status) {
+                Error_Handler();
+            }
+        }
+        save_image = 0;
     }
-    save_image = 0;
-  }
 }
 
 void Task_SynchConfig(void) {
-  if (synch_config) {
-    if (!FileSystem_WriteConfig(&config)) {
-      Error_Handler();
-    }
+    if (synch_config) {
+        if (!FileSystem_WriteConfig(&config)) {
+            Error_Handler();
+        }
 
-    synch_config = 0;
-  }
+        synch_config = 0;
+    }
 }
 
 
 void Task_BlinkyDog(void) {
-  if (HAL_GetTick() - time > 1000) {
-    HAL_GPIO_TogglePin(USER_LED_GPIO_Port, USER_LED_Pin);
-    time = HAL_GetTick();
-  }
+    if (HAL_GetTick() - time > 1000) {
+        HAL_GPIO_TogglePin(USER_LED_GPIO_Port, USER_LED_Pin);
+        time = HAL_GetTick();
+    }
 }
 
 void InterfaceCallback_RequestSaveImage(void) {
-  save_image = 1;
+    save_image = 1;
 }
 
 void InterfaceCallback_RequestNewHeatmap(uint32_t index) {
-  config.heatmap_index = index;
-  inform_observers = 1;
-  synch_config = 1;
+    config.heatmap_index = index;
+    inform_observers = 1;
+    synch_config = 1;
 }
 
 void Task_InformObservers(void) {
-  if (inform_observers) {
-    Config_InformObservers(config);
-    inform_observers = 0;
-  }
+    if (inform_observers) {
+        Config_InformObservers(config);
+        inform_observers = 0;
+    }
 }

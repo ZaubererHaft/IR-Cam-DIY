@@ -2,28 +2,42 @@
 #include "heatmap.h"
 #include "ILI9341_DMA_driver.h"
 #include "ILI9341_GFX.h"
+#include "navigation.h"
+#include "battery_state.h"
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
-#include "navigation.h"
-#include "ui_state.h"
 
 #define BATT_MAX_LVL 3583
 
 static uint32_t last_batt_anim_time = 0;
-static BatteryState battery_state;
 static bool redraw_battery_state = true;
+static uint32_t curr_fps = 0;
+static BatteryState battery_state;
+static Config current_config;
 
-static void Common_CleanUp(void) {
-    ILI9341_Draw_Rectangle(0, 0, 320, 20, BLACK);
-    ILI9341_Draw_Rectangle(0, 220, 320, 20, BLACK);
-    ILI9341_Draw_Rectangle(260, 0, 60, 240, BLACK);
+static void CleanUp_Battery(void) {
+    ILI9341_Draw_Rectangle(260, 0, 30, 30, BLACK);
 }
 
-static void Common_DrawHeatmap(UiState *state) {
-    HeatmapFunction heatmap = Heatmap_GetByIndex(state->app_config.heatmap_index);
+static void CleanUp_Heatmap(void) {
+    ILI9341_Draw_Rectangle(260, 30, 60, 170, BLACK);
+}
+
+static void CleanUp_FPS(void) {
+    ILI9341_Draw_Rectangle(250, 220, 320, 20, BLACK);
+}
+
+static void CleanUp_Record(void) {
+    ILI9341_Draw_Rectangle(290, 0, 30, 30, BLACK);
+}
+
+static void Common_DrawHeatmap() {
+    CleanUp_Heatmap();
+
+    HeatmapFunction heatmap = Heatmap_GetByIndex(current_config.heatmap_index);
 
     int x = 270;
     int y = 50;
@@ -48,9 +62,11 @@ static void Common_DrawHeatmap(UiState *state) {
     ILI9341_Draw_Text(buff, x + 20, y - 16, WHITE, 2, BLACK);
 }
 
-static void Common_DrawFPS(UiState *state) {
+static void Common_DrawFPS() {
+    CleanUp_FPS();
+
     char buff[15] = "FPS: ";
-    snprintf(&buff[5], 10, "%lu", state->fps);
+    snprintf(&buff[5], 10, "%lu", curr_fps);
     ILI9341_Draw_Text(buff, 260, 225, WHITE, 1, BLACK);
 }
 
@@ -58,7 +74,9 @@ static void Common_DrawHeader(void) {
     ILI9341_Draw_Text(" D-CAM ", 0, 0, WHITE, 2, BLACK);
 }
 
-static void Common_DrawRecordState(UiState *state) {
+static void Common_DrawRecordState() {
+    CleanUp_Record();
+
     if (Navigation_CurrentFrame()->id == FRAME_DEFAULT) {
         ILI9341_Draw_Filled_Circle(304, 12, 8, RED);
     } else {
@@ -72,8 +90,7 @@ static void Common_DrawBattery() {
     uint32_t x = 260;
     uint32_t y = 3;
 
-    // Clean up
-    ILI9341_Draw_Rectangle(100, 0, 270, 25, BLACK);
+    CleanUp_Battery();
 
     // Battery frame
     uint16_t battery_bar_color = WHITE;
@@ -134,14 +151,10 @@ static void Common_DrawBattery() {
 }
 
 void Common_DrawInitial() {
-    UiState state;
-
-    Common_CleanUp();
-
     Common_DrawHeader();
-    Common_DrawFPS(&state);
-    Common_DrawRecordState(&state);
-    Common_DrawHeatmap(&state);
+    Common_DrawFPS();
+    Common_DrawRecordState();
+    Common_DrawHeatmap();
     Common_DrawBattery();
 }
 
@@ -161,4 +174,14 @@ void Common_AnimationHandler(void) {
         last_batt_anim_time = HAL_GetTick();
         redraw_battery_state = false;
     }
+}
+
+void Common_ConfigChanged(Config config) {
+    current_config = config;
+    Common_DrawHeatmap();
+}
+
+void Common_FPS_Changed(uint32_t fps) {
+    curr_fps = fps;
+    Common_DrawFPS();
 }

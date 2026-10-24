@@ -34,8 +34,6 @@ void Navigation_InitById(UIFrameIdentifier frame_initial) {
     default_frame.id = FRAME_DEFAULT;
     default_frame.init_function = Common_DrawInitial;
     default_frame.stick_pressed_callback = Common_StickPressed;
-    default_frame.battery_changed_callback = Common_BatteryStateChanged;
-    default_frame.animate_function = Common_AnimationHandler;
 
     gallery_frame.id = FRAME_GALLERY;
     gallery_frame.init_function = Gallery_DrawInitial;
@@ -66,6 +64,10 @@ void Navigation_NavigateToById(UIFrameIdentifier frame) {
     stack_ptr++;
     nav_stack[stack_ptr] = Navigation_FrameById(frame);
     nav_stack[stack_ptr]->init_function();
+
+    if (frame != FRAME_DEFAULT) {
+        default_frame.init_function();
+    }
 }
 
 void Navigation_NavigateBack() {
@@ -73,6 +75,10 @@ void Navigation_NavigateBack() {
 
     stack_ptr--;
     nav_stack[stack_ptr]->init_function();
+
+    if (Navigation_CurrentFrame()->id != FRAME_DEFAULT) {
+        default_frame.init_function();
+    }
 }
 
 UIFrame *Navigation_CurrentFrame(void) {
@@ -113,25 +119,18 @@ void Navigation_StickPressed(void) {
 }
 
 void Navigation_BatteryStateChanged(BatteryState new_state) {
-    if (Navigation_CurrentFrame()->battery_changed_callback != NULL) {
-        Navigation_CurrentFrame()->battery_changed_callback(new_state);
-    }
+    Common_BatteryStateChanged(new_state);
 }
 
 void Navigation_ConfigChanged(Config config) {
-    if (Navigation_CurrentFrame()->config_changed_callback != NULL) {
-        Navigation_CurrentFrame()->config_changed_callback(config);
-    }
+    Common_ConfigChanged(config);
+    Settings_ConfigChanged(config);
 }
 
 void Navigation_AnimationCallback(void) {
-    if (Navigation_CurrentFrame()->animate_function != NULL) {
-        Navigation_CurrentFrame()->animate_function();
-    }
+    Common_AnimationHandler();
 }
 
 void Navigation_FPSChanged(uint32_t fps) {
-    if (Navigation_CurrentFrame()->fps_changed_callback != NULL) {
-        Navigation_CurrentFrame()->fps_changed_callback(fps);
-    }
+    Common_FPS_Changed(fps);
 }
