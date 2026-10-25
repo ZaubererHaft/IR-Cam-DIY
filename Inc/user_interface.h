@@ -16,6 +16,6 @@ void UserInterface_PutAnalogData(const uint16_t data[3]);
 
 void UserInterface_ConfigObserver(Config config);
 
-void UserInterface_ShowError(const char *text);
+void UserInterface_ShowDialog(const char *text);
 
 #endif //CAM_USER_INTERFACE_H

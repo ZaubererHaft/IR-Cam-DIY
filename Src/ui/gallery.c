@@ -179,7 +179,7 @@ static void Gallery_RedrawNavigationBar() {
 
 void Gallery_DrawInitial() {
     ILI9341_Draw_Rectangle(00, 20, 260, 210, BLACK);
-    ILI9341_Draw_Text("Gallery", 80, 40, WHITE, 2, BLACK);
+    ILI9341_Draw_Text("Gallery", 80, 40, ORANGE, 2, BLACK);
 
     Gallery_ReadAllFiles();
     Gallery_RedrawNavigationBar();

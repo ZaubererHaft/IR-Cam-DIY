@@ -39,7 +39,7 @@ static void Menu_RedrawMenu(void) {
     uint16_t x = 50;
 
     ILI9341_Draw_Rectangle(x, y, 160, 16, BLACK);
-    ILI9341_Draw_Text(" Menu", y, y, WHITE, 2, BLACK);
+    ILI9341_Draw_Text(" Menu", y, y, ORANGE, 2, BLACK);
 
     DrawMenuLine(" Save Image", x, &y, MENU_SAVE_IMAGE);
     DrawMenuLine(" Gallery", x, &y, MENU_GALLERY);

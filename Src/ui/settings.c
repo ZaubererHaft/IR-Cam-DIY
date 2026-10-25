@@ -42,7 +42,7 @@ void Settings_Redraw(void) {
     uint16_t x = 15;
 
     ILI9341_Draw_Rectangle(x, y, 220, 16, BLACK);
-    ILI9341_Draw_Text(" Settings", 60, y, WHITE, 2, BLACK);
+    ILI9341_Draw_Text(" Settings", 60, y, ORANGE, 2, BLACK);
 
     char selected_heatmap[40];
     snprintf(selected_heatmap, sizeof(selected_heatmap), " Heatmap: %s", Heatmap_GetNameByIndex(requested_heatmap));

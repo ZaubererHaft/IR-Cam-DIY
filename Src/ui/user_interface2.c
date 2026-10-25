@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
+#include "dialog.h"
+
 typedef struct AnalogData_ {
     uint16_t stick_x;
     uint16_t stick_y;
@@ -113,7 +115,9 @@ void UserInterface_ConfigObserver(Config config) {
     Navigation_ConfigChanged(config);
 }
 
-void UserInterface_ShowError(const char *text) {
+void UserInterface_ShowDialog(const char *text) {
+    Dialog_SetText(text);
+    Navigation_NavigateToById(FRAME_DIALOG);
 }
 
 

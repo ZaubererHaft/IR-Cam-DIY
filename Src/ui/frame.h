@@ -1,13 +1,13 @@
 #ifndef CAM_FRAME_H
 #define CAM_FRAME_H
 
-#include "battery_state.h"
 
 typedef enum UIFrameIdentifier_ {
     FRAME_DEFAULT,
     FRAME_MENU_OVERVIEW,
     FRAME_GALLERY,
     FRAME_SETTINGS,
+    FRAME_DIALOG
 } UIFrameIdentifier;
 
 typedef struct UIFrame_ {

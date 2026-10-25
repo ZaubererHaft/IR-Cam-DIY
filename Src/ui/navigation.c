@@ -6,13 +6,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "dialog.h"
 #include "settings.h"
 
 static UIFrame default_frame;
 static UIFrame gallery_frame;
 static UIFrame menu_frame;
 static UIFrame settings_frame;
-static UIFrame settings_frame;
+static UIFrame dialog_frame;
 
 static int32_t stack_ptr = -1;
 static UIFrame *nav_stack[5];
@@ -26,6 +27,9 @@ static UIFrame *Navigation_FrameById(UIFrameIdentifier frame) {
     }
     if (frame == FRAME_SETTINGS) {
         return &settings_frame;
+    }
+    if (frame == FRAME_DIALOG) {
+        return &dialog_frame;
     }
     return &default_frame;
 }
@@ -54,6 +58,10 @@ void Navigation_InitById(UIFrameIdentifier frame_initial) {
     settings_frame.stick_down_callback = Settings_StickMovedDown;
     settings_frame.stick_up_callback = Settings_StickMovedUp;
     settings_frame.stick_pressed_callback = Settings_StickPressed;
+
+    dialog_frame.id = FRAME_DIALOG;
+    dialog_frame.init_function = Dialog_DrawInitial;
+    dialog_frame.stick_pressed_callback = Dialog_StickPressed;
 
     Navigation_NavigateToById(frame_initial);
 }

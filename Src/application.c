@@ -57,7 +57,7 @@ void application_main(void) {
 }
 
 void application_error_handler(void) {
-    UserInterface_ShowError("Error");
+    UserInterface_ShowDialog("Error");
 }
 
 void Task_Init(void) {
@@ -94,6 +94,8 @@ void Task_Init(void) {
     if (MLX90640_Restart() != MLX90640_NO_ERROR) {
         Error_Handler();
     }
+
+    UserInterface_ShowDialog(" Welcome!");
 
     time = HAL_GetTick();
 }

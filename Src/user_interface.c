@@ -365,7 +365,7 @@ void UserInterface_Loop(void) {
 
 }
 
-void UserInterface_ShowError(const char *text) {
+void UserInterface_ShowDialog(const char *text) {
   DrawDialog(text);
 }
 
