@@ -12,7 +12,7 @@ static HeatmapFunction TemperatureConverter;
 
 #define CONFIG_FILE_NAME "config.txt"
 
-uint32_t FileSystem_FileExists(const char *file) {
+static uint32_t FileSystem_FileExists(const char *file) {
     FILINFO fno;
     const FRESULT res = f_stat(file, &fno);
 
@@ -23,7 +23,7 @@ uint32_t FileSystem_FileExists(const char *file) {
     return 0;
 }
 
-FRESULT FileSystem_SaveConfig(const Config *config) {
+static FRESULT FileSystem_SaveConfig(const Config *config) {
     FIL config_file;
     UINT bw;
 

@@ -89,7 +89,7 @@ void Task_Init(void) {
         Error_Handler();
     }
 
-    // //MX_USB_DEVICE_Init();
+    MX_USB_DEVICE_Init();
 
     if (MLX90640_Restart() != MLX90640_NO_ERROR) {
         Error_Handler();
