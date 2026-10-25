@@ -10,9 +10,7 @@ bool UserInterface_Init(void);
 
 bool UserInterface_ShowingAnyMenuOrDialog(void);
 
-void UserInterface_Loop(void);
-
-void UserInterface_RedrawIRImageIfNecessary(float *image);
+void Task_UserInterface(void);
 
 void UserInterface_PutAnalogData(const uint16_t data[3]);
 

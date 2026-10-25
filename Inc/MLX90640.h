@@ -14,6 +14,8 @@ int32_t MLX90640_ReadAndDisplay(uint32_t request_next);
 
 float *MLX90640_GetIRImage(void);
 
+void MLX90640_RedrawIRImage(void);
+
 void MLX90640_ConfigObserver(Config config);
 
 #endif //CAM_MLX90640_H

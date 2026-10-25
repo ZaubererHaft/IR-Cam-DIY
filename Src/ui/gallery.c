@@ -71,7 +71,7 @@ static void Gallery_DrawCurrentImage() {
                     pixel |= byte_buffer;
                     le = false;
                 } else {
-                    pixel |= (byte_buffer << 8);
+                    pixel |= byte_buffer << 8;
                     le = true;
 
                     ILI9341_Draw_Rectangle(60 + col * PREVIEW_PIXEL_SIZE, 70 + PREVIEW_PIXEL_SIZE * row,
@@ -178,6 +178,7 @@ static void Gallery_RedrawNavigationBar() {
 }
 
 void Gallery_DrawInitial() {
+    ILI9341_Draw_Rectangle(00, 20, 260, 210, BLACK);
     ILI9341_Draw_Text("Gallery", 80, 40, WHITE, 2, BLACK);
 
     Gallery_ReadAllFiles();

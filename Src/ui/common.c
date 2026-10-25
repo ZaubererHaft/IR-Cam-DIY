@@ -37,7 +37,7 @@ static void CleanUp_Record(void) {
 static void Common_DrawHeatmap() {
     CleanUp_Heatmap();
 
-    HeatmapFunction heatmap = Heatmap_GetByIndex(current_config.heatmap_index);
+    const HeatmapFunction heatmap = Heatmap_GetByIndex(current_config.heatmap_index);
 
     int x = 270;
     int y = 50;

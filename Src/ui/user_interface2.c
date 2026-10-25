@@ -1,14 +1,13 @@
-#include <stdlib.h>
-#include <sys/stat.h>
-
-#include "common.h"
 #include "user_interface.h"
+#include "common.h"
 #include "ILI9341_DMA_driver.h"
 #include "ILI9341_GFX.h"
 #include "stdbool.h"
 #include "navigation.h"
 #include "battery_state.h"
 
+#include <stdlib.h>
+#include <sys/stat.h>
 
 typedef struct AnalogData_ {
     uint16_t stick_x;
@@ -42,7 +41,7 @@ bool UserInterface_ShowingAnyMenuOrDialog(void) {
     return Navigation_CurrentFrame()->id != FRAME_DEFAULT;
 }
 
-void UserInterface_Loop(void) {
+void Task_UserInterface(void) {
     // Read battery management chip
     const GPIO_PinState stat1 = !HAL_GPIO_ReadPin(BATTCHARGING_GPIO_Port, BATTCHARGING_Pin);
     const GPIO_PinState stat2 = !HAL_GPIO_ReadPin(BATTFULL_GPIO_Port, BATTFULL_Pin);
@@ -103,8 +102,6 @@ void UserInterface_Loop(void) {
     }
 }
 
-void UserInterface_RedrawIRImageIfNecessary(float *image) {
-}
 
 void UserInterface_PutAnalogData(const uint16_t data[3]) {
     analog_data.stick_x = data[0];

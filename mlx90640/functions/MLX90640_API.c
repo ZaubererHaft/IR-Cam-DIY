@@ -23,6 +23,7 @@
 #include "../../Inc/ui_constants.h"
 #include "heatmap.h"
 #include "ILI9341_DMA_driver.h"
+#include "MLX90640.h"
 
 static void ExtractVDDParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 static void ExtractPTATParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
@@ -589,6 +590,18 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
         }
     }
 }
+
+void MLX90640_RedrawIRImage(void) {
+    float *image = MLX90640_GetIRImage();
+    for (int pixelNumber = 0; pixelNumber < 768; pixelNumber++) {
+        int row = pixelNumber >> 5;
+        int col = pixelNumber & 31;
+
+        ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size,
+                               TemperatureConverter(image[pixelNumber]));
+    }
+}
+
 
 void MLX90640_ConfigObserver(Config config) {
     TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
