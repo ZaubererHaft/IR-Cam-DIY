@@ -103,7 +103,9 @@ W25Q_Status W25Q_EraseSector(const W25Q *flash, uint32_t sector);
 W25Q_Status W25Q_Write(const W25Q *flash, uint32_t address, const uint8_t *data, uint32_t size,
                             uint8_t *sector_backup);
 
-
+/**
+ * Writes the data at the page address. Note that data must be of sizeof(page)
+ */
 W25Q_Status W25Q_WritePage(const W25Q *flash, uint32_t page, const uint8_t *data);
 
 /**

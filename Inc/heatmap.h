@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "config.h"
+
 uint16_t TempToRGB565(float temp);
 uint16_t TempToGray565(float temp);
 uint16_t TempToGray565_Inverted(float temp);
@@ -18,8 +20,6 @@ const char * Heatmap_GetNameByIndex(uint32_t index);
 
 uint32_t Heatmap_GetSize();
 
-
-extern float tMin;
-extern float tMax;
+void Heatmap_ConfigObserver(Config config);
 
 #endif //CAM_HEATMAP_H

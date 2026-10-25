@@ -481,8 +481,9 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 //------------------------------------------------------------------------------
 #define MIN_DIF_TO_REDRAW 0.3f //ToDo: make dynamic, e.g. (max - min) / 7
 int rescaled = 0;
+static Config current_config;
 
-void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int autoscale, int immediate_display)
+void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int immediate_display)
 {
     // 1. Pre-calculate common environmental constants
     float vdd = MLX90640_GetVdd(frameData, params);
@@ -579,13 +580,13 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
     rescaled = 0;
 
     // Global Min/Max update
-    if (autoscale) {
-        if (min < tMin) {
-            tMin = (int)(min - 2.5f);
+    if (current_config.autoscale) {
+        if (min < current_config.tMin) {
+            current_config.tMin = (int)(min - 2.5f);
             rescaled = 1;
         }
-        if (max > tMax) {
-            tMax = (int)(max + 2.5f);
+        if (max > current_config.tMax) {
+            current_config.tMax = (int)(max + 2.5f);
             rescaled = 1;
         }
     }
@@ -604,6 +605,7 @@ void MLX90640_RedrawIRImage(void) {
 
 
 void MLX90640_ConfigObserver(Config config) {
+    current_config = config;
     TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
 }
 

@@ -43,22 +43,22 @@ static void Common_DrawHeatmap() {
     int y = 50;
 
     char buff[20] = {};
-    snprintf(buff, sizeof(buff), "%i", (int) tMin);
+    snprintf(buff, sizeof(buff), "%i", (int) current_config.tMin);
     ILI9341_Draw_Text(buff, x + 20, y, WHITE, 2, BLACK);
 
     const int chunks = 30;
-    const float step = (tMax - tMin) / (float) chunks;
+    const float step = (current_config.tMax - current_config.tMin) / (float) chunks;
     for (int i = 0; i < chunks; ++i) {
-        const float val = tMin + (float) i * step;
+        const float val = current_config.tMin + (float) i * step;
         ILI9341_Draw_Rectangle(x, y, 15, 4, heatmap(val));
         y += 4;
     }
 
-    const float mid = (tMax + fabsf(tMin)) / 2.0f;
+    const float mid = (current_config.tMax + fabsf(current_config.tMin)) / 2.0f;
     snprintf(buff, sizeof(buff), "%i", (int) mid);
     ILI9341_Draw_Text(buff, x + 20, y - 65, WHITE, 2, BLACK);
 
-    snprintf(buff, sizeof(buff), "%i", (int) tMax);
+    snprintf(buff, sizeof(buff), "%i", (int) current_config.tMax);
     ILI9341_Draw_Text(buff, x + 20, y - 16, WHITE, 2, BLACK);
 }
 

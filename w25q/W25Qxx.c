@@ -45,8 +45,6 @@ W25Q_Status wait_for_ready(const W25Q *flash) {
         }
         status = W25Q_Busy(flash, &busy);
     } while (busy && status == W25Q_OK);
-
-
     return status;
 }
 
@@ -115,7 +113,6 @@ W25Q_Status W25Q_Read(const W25Q *flash, const uint32_t address, const uint32_t 
     if (address + size > flash->flash_size_bytes) {
         status = W25Q_INVALID_ADDRESS;
     } else {
-
         const uint32_t data = __REV(address) | W25Q_ENABLE_READ;
         cs_LOW(flash);
         status |= write_SPI(flash, (const uint8_t *) &data, sizeof(data));
@@ -129,16 +126,21 @@ W25Q_Status W25Q_Read(const W25Q *flash, const uint32_t address, const uint32_t 
 
 
 W25Q_Status W25Q_WritePage(const W25Q *flash, const uint32_t page, const uint8_t *data) {
-    const uint32_t cmd = __REV(page * flash->page_size_byte) | W25Q_PAGE_PROGRAM;
+    W25Q_Status status = W25Q_OK;
+ if (page >= flash->pages) {
+        status = W25Q_INVALID_ADDRESS;
+    } else {
+        const uint32_t cmd = __REV(page * flash->page_size_byte) | W25Q_PAGE_PROGRAM;
+        status |= write_enable(flash);
 
-    W25Q_Status status = write_enable(flash);
+        cs_LOW(flash);
+        status |= write_SPI(flash, (const uint8_t *) &cmd, sizeof(cmd));
+        status |= write_SPI(flash, &data[0], flash->page_size_byte);
+        cs_HIGH(flash);
 
-    cs_LOW(flash);
-    status |= write_SPI(flash, (const uint8_t *) &cmd, sizeof(cmd));
-    status |= write_SPI(flash, &data[0], flash->page_size_byte);
-    cs_HIGH(flash);
+        status |= wait_for_ready(flash);
+    }
 
-    status |= wait_for_ready(flash);
     return status;
 }
 

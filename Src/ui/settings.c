@@ -15,6 +15,8 @@ static Config curr_config;
 
 typedef enum MENU_ {
     MENU_HEATMAP,
+    MENU_MIN,
+    MENU_MAX,
     MENU_SAVE,
     MENU_BACK
 } MENU;
@@ -37,16 +39,23 @@ static void DrawMenuLine(const char *text, uint16_t x, uint16_t *y, uint16_t lin
     ILI9341_Draw_Text(text, x, *y, color_foreground, 2, color_background);
 }
 
-void Settings_Redraw(void) {
+static void Settings_Redraw(void) {
     uint16_t y = 80;
     uint16_t x = 15;
 
     ILI9341_Draw_Rectangle(x, y, 220, 16, BLACK);
     ILI9341_Draw_Text(" Settings", 60, y, ORANGE, 2, BLACK);
 
-    char selected_heatmap[40];
-    snprintf(selected_heatmap, sizeof(selected_heatmap), " Heatmap: %s", Heatmap_GetNameByIndex(requested_heatmap));
-    DrawMenuLine(selected_heatmap, x, &y, MENU_HEATMAP);
+    char buffer[40];
+    snprintf(buffer, sizeof(buffer), " Heatmap: %s", Heatmap_GetNameByIndex(requested_heatmap));
+    DrawMenuLine(buffer, x, &y, MENU_HEATMAP);
+
+    snprintf(buffer, sizeof(buffer), " Temp min: %.2f", curr_config.tMin);
+    DrawMenuLine(buffer, x, &y, MENU_MIN);
+
+    snprintf(buffer, sizeof(buffer), " Temp max: %.2f", curr_config.tMax);
+    DrawMenuLine(buffer, x, &y, MENU_MAX);
+
     DrawMenuLine(" Save ", x, &y, MENU_SAVE);
     DrawMenuLine(" Back ", x, &y, MENU_BACK);
 }

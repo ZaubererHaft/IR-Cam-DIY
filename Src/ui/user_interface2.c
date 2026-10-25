@@ -20,9 +20,6 @@ typedef struct AnalogData_ {
 static AnalogData analog_data;
 static BatteryState battery_state;
 
-float tMin = 15.0f;
-float tMax = 40.0f;
-
 static bool stick_z_pressed = false;
 static uint32_t stick_lock_time;
 

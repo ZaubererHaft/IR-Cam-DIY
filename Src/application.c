@@ -8,6 +8,7 @@
 #include "usb_device.h"
 #include "user_interface.h"
 #include "analog.h"
+#include "heatmap.h"
 #include "interface_callback.h"
 
 /**
@@ -66,6 +67,7 @@ void Task_Init(void) {
     Config_AddObserver(UserInterface_ConfigObserver);
     Config_AddObserver(FileSystem_ConfigObserver);
     Config_AddObserver(MLX90640_ConfigObserver);
+    Config_AddObserver(Heatmap_ConfigObserver);
 
     if (!Flash_Init()) {
         Error_Handler();
@@ -74,6 +76,9 @@ void Task_Init(void) {
     if (!FileSystem_Init(sector_backup, &config)) {
         Error_Handler();
     }
+
+    config.tMin = 10;
+    config.tMax = 30;
 
     Config_InformObservers(config);
 

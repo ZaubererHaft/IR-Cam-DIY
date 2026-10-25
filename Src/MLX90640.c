@@ -3,10 +3,8 @@
 #include <string.h>
 
 #include "heatmap.h"
-#include "ILI9341_DMA_driver.h"
 #include "MLX90640_API.h"
 #include "main.h"
-#include "ui_constants.h"
 
 #define  FPS2HZ   0x02
 #define  FPS4HZ   0x03
@@ -71,7 +69,7 @@ int32_t MLX90640_ReadAndDisplay(uint32_t request_next) {
 
         float Ta = MLX90640_GetTa(calc_buff, &mlxParams);
         float tr = Ta - TA_SHIFT;
-        MLX90640_CalculateToAndDisplay(calc_buff, &mlxParams, emissivity, tr, ir_image, 0, request_next);
+        MLX90640_CalculateToAndDisplay(calc_buff, &mlxParams, emissivity, tr, ir_image, request_next);
     }
 
     return status;

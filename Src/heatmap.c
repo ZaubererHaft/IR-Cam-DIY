@@ -5,6 +5,7 @@ static HeatmapFunction available_heatmaps[] = {
   };
 
 static const char *heatmap_names[] = {"Magma", "Gray", "Gray (i)", "Rainbow"};
+static Config curr_config;
 
 HeatmapFunction Heatmap_GetByIndex(uint32_t index) {
     if (index >= Heatmap_GetSize()) {
@@ -24,16 +25,20 @@ uint32_t Heatmap_GetSize() {
     return sizeof(available_heatmaps) / sizeof(available_heatmaps[0]);
 }
 
+void Heatmap_ConfigObserver(Config config) {
+    curr_config = config;
+}
+
 #define RGB565(r, g, b) \
 (((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F))
 
 uint16_t TempToRGB565(float temp) {
     // Clamp
-    if (temp < tMin) temp = tMin;
-    if (temp > tMax) temp = tMax;
+    if (temp < curr_config.tMin) temp = curr_config.tMin;
+    if (temp > curr_config.tMax) temp = curr_config.tMax;
 
     // Normalize (0.0 – 1.0)
-    float norm = (temp - tMin) / (tMax - tMin);
+    float norm = (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin);
 
     uint8_t r, g, b;
 
@@ -57,11 +62,11 @@ uint16_t TempToRGB565(float temp) {
 
 uint16_t TempToGray565(float temp) {
     // Clamp
-    if (temp < tMin) temp = tMin;
-    if (temp > tMax) temp = tMax;
+    if (temp < curr_config.tMin) temp = curr_config.tMin;
+    if (temp > curr_config.tMax) temp = curr_config.tMax;
 
     // Normalize (0.0 – 1.0)
-    float norm = (temp - tMin) / (tMax - tMin);
+    float norm = (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin);
 
     // Convert to grayscale intensity
     uint8_t gray5 = (uint8_t)(norm * 31.0f); // for R and B (5-bit)
@@ -72,11 +77,11 @@ uint16_t TempToGray565(float temp) {
 
 uint16_t TempToGray565_Inverted(float temp) {
     // Clamp
-    if (temp < tMin) temp = tMin;
-    if (temp > tMax) temp = tMax;
+    if (temp < curr_config.tMin) temp = curr_config.tMin;
+    if (temp > curr_config.tMax) temp = curr_config.tMax;
 
     // Normalize
-    float norm = (temp - tMin) / (tMax - tMin);
+    float norm = (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin);
 
     // Invert
     norm = 1.0f - norm;
@@ -88,10 +93,10 @@ uint16_t TempToGray565_Inverted(float temp) {
 }
 
 uint16_t TempToGray565_InvertedFast(float temp) {
-    if (temp < tMin) temp = tMin;
-    if (temp > tMax) temp = tMax;
+    if (temp < curr_config.tMin) temp = curr_config.tMin;
+    if (temp > curr_config.tMax) temp = curr_config.tMax;
 
-    float norm = (temp - tMin) / (tMax - tMin);
+    float norm = (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin);
 
     // Invert
     norm = 1.0f - norm;
@@ -106,10 +111,10 @@ uint16_t TempToGray565_InvertedFast(float temp) {
 }
 
 uint16_t TempToRainbow565_Fast(float temp) {
-    if (temp < tMin) temp = tMin;
-    if (temp > tMax) temp = tMax;
+    if (temp < curr_config.tMin) temp = curr_config.tMin;
+    if (temp > curr_config.tMax) temp = curr_config.tMax;
 
-    uint8_t x = (uint8_t)(255.0f * (temp - tMin) / (tMax - tMin));
+    uint8_t x = (uint8_t)(255.0f * (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin));
 
     uint8_t r = 0, g = 0, b = 0;
 
@@ -135,10 +140,10 @@ uint16_t TempToRainbow565_Fast(float temp) {
 }
 
 uint16_t TempToMagma565_Fast(float temp) {
-    if (temp < tMin) temp = tMin;
-    if (temp > tMax) temp = tMax;
+    if (temp < curr_config.tMin) temp = curr_config.tMin;
+    if (temp > curr_config.tMax) temp = curr_config.tMax;
 
-    uint8_t x = (uint8_t)(255.0f * (temp - tMin) / (tMax - tMin));
+    uint8_t x = (uint8_t)(255.0f * (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin));
 
     uint8_t r = 0, g = 0, b = 0;
 
