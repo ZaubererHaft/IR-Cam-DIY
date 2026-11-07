@@ -10,12 +10,8 @@ int32_t MLX90640_Init(void);
 
 int32_t MLX90640_Restart(void);
 
-int32_t MLX90640_ReadAndDisplay(uint32_t request_next);
+int32_t MLX90640_ReadTemperature(uint32_t request_next);
 
-float *MLX90640_GetIRImage(void);
-
-void MLX90640_RedrawIRImage(void);
-
-void MLX90640_ConfigObserver(Config config);
+uint16_t *MLX90640_GetIRImageScaled(void);
 
 #endif //CAM_MLX90640_H

@@ -45,8 +45,6 @@ static int IsPixelBad(uint16_t pixel,paramsMLX90640 *params);
 static int ValidateFrameData(uint16_t *frameData);
 static int ValidateAuxData(uint16_t *auxData);
 
-static HeatmapFunction TemperatureConverter;
-
 int MLX90640_DumpEE(uint8_t slaveAddr, uint16_t *eeData)
 {
      return MLX90640_I2CRead(slaveAddr, MLX90640_EEPROM_START_ADDRESS, MLX90640_EEPROM_DUMP_NUM, eeData);
@@ -479,11 +477,8 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 }
 
 //------------------------------------------------------------------------------
-#define MIN_DIF_TO_REDRAW 0.3f //ToDo: make dynamic, e.g. (max - min) / 7
-int rescaled = 0;
-static Config current_config;
 
-void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, float *result, int immediate_display)
+void MLX90640_CalculateTo(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, uint16_t *result)
 {
     // 1. Pre-calculate common environmental constants
     float vdd = MLX90640_GetVdd(frameData, params);
@@ -517,16 +512,11 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
     alphaCorrR[2] = (1.0f + params->ksTo[1] * params->ct[2]);
     alphaCorrR[3] = alphaCorrR[2] * (1.0f + params->ksTo[2] * (params->ct[3] - params->ct[2]));
 
-    float min = 1000.0f; // Simplified FLT_MAX
-    float max = -1000.0f;
     uint8_t mode = (frameData[832] & MLX90640_CTRL_MEAS_MODE_MASK) >> 5;
     float irDataCPSub = params->tgc * irDataCP[subPage];
 
-    float alpha = 0.4f; // Wert zwischen 0 (starke Glättung) und 1 (keine Glättung)
-
     // 3. Optimized Pixel Loop
-    for(int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
-    {
+    for(int pixelNumber = 0; pixelNumber < 768; pixelNumber++) {
         // Faster pattern logic
         int row = pixelNumber >> 5;       // pixelNumber / 32
         int col = pixelNumber & 31;       // pixelNumber % 32
@@ -560,54 +550,14 @@ void MLX90640_CalculateToAndDisplay(uint16_t *frameData, const paramsMLX90640 *p
             int range = (temperature >= params->ct[1]) + (temperature >= params->ct[2]) + (temperature >= params->ct[3]);
 
             // Final Refinement
-            temperature = sqrtf(sqrtf(irData / (alphaComp * alphaCorrR[range] * (1.0f + params->ksTo[range] * (temperature - params->ct[range]))) + taTr)) - 273.15f;
+            float temp = sqrtf(sqrtf(irData / (alphaComp * alphaCorrR[range] * (1.0f + params->ksTo[range] * (temperature - params->ct[range]))) + taTr)) - 273.15f;
+            result[pixelNumber] = (uint16_t) (temp * TEMP_SCALING);
 
-            temperature = (alpha * temperature) + ((1.0f - alpha) * result[pixelNumber]);
-
-            // 4. Optimized Display Check
-            float diff = temperature - result[pixelNumber];
-            if (diff > MIN_DIF_TO_REDRAW || diff < -MIN_DIF_TO_REDRAW || rescaled) {
-                if (temperature < min) min = temperature;
-                if (temperature > max) max = temperature;
-                if (immediate_display) {
-                    ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size, TemperatureConverter(temperature));
-                }
-                result[pixelNumber] = temperature;
-            }
         }
     }
 
-    rescaled = 0;
-
-    // Global Min/Max update
-    if (current_config.autoscale) {
-        if (min < current_config.tMin) {
-            current_config.tMin = (int)(min - 2.5f);
-            rescaled = 1;
-        }
-        if (max > current_config.tMax) {
-            current_config.tMax = (int)(max + 2.5f);
-            rescaled = 1;
-        }
-    }
 }
 
-void MLX90640_RedrawIRImage(void) {
-    float *image = MLX90640_GetIRImage();
-    for (int pixelNumber = 0; pixelNumber < 768; pixelNumber++) {
-        int row = pixelNumber >> 5;
-        int col = pixelNumber & 31;
-
-        ILI9341_Draw_Rectangle(col * pixel_size + offset_x, row * pixel_size + offset_y, pixel_size, pixel_size,
-                               TemperatureConverter(image[pixelNumber]));
-    }
-}
-
-
-void MLX90640_ConfigObserver(Config config) {
-    current_config = config;
-    TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
-}
 
 
 //------------------------------------------------------------------------------

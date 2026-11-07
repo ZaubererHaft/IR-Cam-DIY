@@ -7,7 +7,7 @@
 
 uint32_t FileSystem_Init(uint8_t *buffer, Config *out_config);
 
-uint32_t FileSystem_WriteBitmap(const float *image, uint32_t size, const char *name);
+uint32_t FileSystem_WriteBitmap(const uint16_t *image_scaled, uint32_t size, const char *name);
 
 uint32_t FileSystem_WriteConfig(const Config *config);
 

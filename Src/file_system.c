@@ -135,7 +135,7 @@ void FileSystem_ConfigObserver(Config config) {
     TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
 }
 
-uint32_t FileSystem_WriteBitmap(const float *image, uint32_t size, const char *name) {
+uint32_t FileSystem_WriteBitmap(const uint16_t *image_scaled, uint32_t size, const char *name) {
     bitmap_buffer[0] = 'B';
     bitmap_buffer[1] = 'M';
 
@@ -237,7 +237,8 @@ uint32_t FileSystem_WriteBitmap(const float *image, uint32_t size, const char *n
     bitmap_buffer[65] = 0x00;
 
     for (int i = 0; i < size; ++i) {
-        const uint16_t col = TemperatureConverter(image[i]);
+        float temp = (float) image_scaled[i] / TEMP_SCALING;
+        const uint16_t col = TemperatureConverter(temp);
         bitmap_buffer[66 + i * 2] = col & 0xFF;
         bitmap_buffer[66 + i * 2 + 1] = col >> 8;
     }

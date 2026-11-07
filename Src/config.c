@@ -1,7 +1,7 @@
 #include "config.h"
 
 static uint32_t index = 0;
-static Config_Observer observers[5];
+static Config_Observer observers[7];
 
 void Config_AddObserver(Config_Observer observer) {
     observers[index] = observer;

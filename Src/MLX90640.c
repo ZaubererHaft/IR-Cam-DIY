@@ -25,7 +25,7 @@ static float emissivity = 0.95f;
 static uint16_t rx_buff[834];
 static uint16_t calc_buff[834];
 
-static float ir_image[32 * 24];
+static uint16_t ir_image_scaled_100[32 * 24];
 
 static int new_ir_data_available = 0;
 
@@ -53,7 +53,7 @@ int32_t MLX90640_Restart(void) {
     return MLX90640_GetFrameDataAsync(MLX90640_ADDR, rx_buff);
 }
 
-int32_t MLX90640_ReadAndDisplay(uint32_t request_next) {
+int32_t MLX90640_ReadTemperature(uint32_t request_next) {
     int32_t status = 0;
 
     if (new_ir_data_available) {
@@ -69,15 +69,15 @@ int32_t MLX90640_ReadAndDisplay(uint32_t request_next) {
 
         float Ta = MLX90640_GetTa(calc_buff, &mlxParams);
         float tr = Ta - TA_SHIFT;
-        MLX90640_CalculateToAndDisplay(calc_buff, &mlxParams, emissivity, tr, ir_image, request_next);
+        MLX90640_CalculateTo(calc_buff, &mlxParams, emissivity, tr, ir_image_scaled_100);
     }
 
     return status;
 }
 
 
-float *MLX90640_GetIRImage(void) {
-    return ir_image;
+uint16_t *MLX90640_GetIRImageScaled(void) {
+    return ir_image_scaled_100;
 }
 
 

@@ -22,4 +22,6 @@ uint32_t Heatmap_GetSize();
 
 void Heatmap_ConfigObserver(Config config);
 
+#define TEMP_SCALING 1000.0f
+
 #endif //CAM_HEATMAP_H

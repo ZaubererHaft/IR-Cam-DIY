@@ -50,6 +50,7 @@ add_executable(${CMAKE_PROJECT_NAME}
         Src/ui/settings.h
         Src/ui/dialog.c
         Src/ui/dialog.h
+        Src/dsp.c
 )
 
 # Add STM32CubeMX generated sources
