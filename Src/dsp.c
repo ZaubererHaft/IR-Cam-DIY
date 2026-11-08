@@ -15,21 +15,18 @@
 #define ALPHA_FX       96
 #define ONE_MINUS_ALPHA (256 - ALPHA_FX)
 
-// Flexibler Upscaling-Faktor (kann nun beliebig angepasst werden)
-#define UPSCALING_FACTOR 4
-
 #define SRC_WIDTH   32
 #define SRC_HEIGHT  24
-#define DST_WIDTH   (SRC_WIDTH * UPSCALING_FACTOR)
-#define DST_HEIGHT  (SRC_HEIGHT * UPSCALING_FACTOR)
-#define NEW_PIXEL_SIZE (8 / UPSCALING_FACTOR)
 
+#define MAX_UPSCALING_FACTOR 8
+#define MAX_DST_WIDTH        (SRC_WIDTH * MAX_UPSCALING_FACTOR)
+#define MAX_NEW_PIXEL_SIZE   8
 
 static HeatmapFunction TemperatureConverter;
 static uint16_t old_data[SRC_WIDTH * SRC_HEIGHT];
 static uint16_t current_filtered[SRC_WIDTH * SRC_HEIGHT];
 
-static uint16_t display_line_buffer[DST_WIDTH * NEW_PIXEL_SIZE];
+static uint16_t display_line_buffer[MAX_DST_WIDTH * MAX_NEW_PIXEL_SIZE];
 
 void DSP_Init(void) {
     memset(old_data, 0xFF, sizeof(old_data));
@@ -44,10 +41,20 @@ static uint32_t get_src_pixel(const uint16_t *buffer, int x, int y) {
     return buffer[y * SRC_WIDTH + x];
 }
 
-void DSP_ProcessAndDisplay(void) {
+int32_t upscaling_factor = 2;
+
+
+// Der Upscaling-Faktor wird nun als Parameter übergeben
+void DSP_ProcessAndDisplay() {
+    // Dynamische Berechnung der Ziel-Dimensionen zur Laufzeit
+    int dst_width = SRC_WIDTH * upscaling_factor;
+    int dst_height = SRC_HEIGHT * upscaling_factor;
+    int new_pixel_size = 8 / upscaling_factor;
+    if (new_pixel_size < 1) new_pixel_size = 1; // Sicherstellen, dass die Pixelgröße mindestens 1 ist
+
     const uint16_t *image = MLX90640_GetIRImageScaled();
 
-    // Filter data (here recursive Pole for noise elimination)
+    // 1. EMA-Filter auf den 32x24 Rohdaten
     for (int i = 0; i < 768; i++) {
         uint32_t temp_as_int = image[i];
         uint32_t old_temp = old_data[i];
@@ -58,21 +65,20 @@ void DSP_ProcessAndDisplay(void) {
     ILI9341_Set_Address(
         offset_x,
         offset_y,
-        offset_x + (DST_WIDTH * NEW_PIXEL_SIZE) - 1,
-        offset_y + (DST_HEIGHT * NEW_PIXEL_SIZE) - 1
+        offset_x + (dst_width * new_pixel_size) - 1,
+        offset_y + (dst_height * new_pixel_size) - 1
     );
 
-    // Bilinear interpolation
-    for (int dst_y = 0; dst_y < DST_HEIGHT; dst_y++) {
-        // Bestimme das Quellpixel und den fraktionalen Anteil basierend auf dem Faktor
-        int src_y = dst_y / UPSCALING_FACTOR;
-        int y_frac = dst_y % UPSCALING_FACTOR;
+    // 3. Bilineare Interpolation (Zeilenweise) mit variablem Faktor
+    for (int dst_y = 0; dst_y < dst_height; dst_y++) {
+        int src_y = dst_y / upscaling_factor;
+        int y_frac = dst_y % upscaling_factor;
 
         int buf_idx = 0;
 
-        for (int dst_x = 0; dst_x < DST_WIDTH; dst_x++) {
-            int src_x = dst_x / UPSCALING_FACTOR;
-            int x_frac = dst_x % UPSCALING_FACTOR;
+        for (int dst_x = 0; dst_x < dst_width; dst_x++) {
+            int src_x = dst_x / upscaling_factor;
+            int x_frac = dst_x % upscaling_factor;
 
             // Die 4 umgebenden Quellpixel holen
             uint32_t p00 = current_filtered[(src_y * SRC_WIDTH) + src_x];
@@ -80,25 +86,25 @@ void DSP_ProcessAndDisplay(void) {
             uint32_t p01 = get_src_pixel(current_filtered, src_x, src_y + 1);
             uint32_t p11 = get_src_pixel(current_filtered, src_x + 1, src_y + 1);
 
-            // Bilineare Interpolation über Gewichtung (Basis: UPSCALING_FACTOR * UPSCALING_FACTOR)
-            uint32_t w00 = (UPSCALING_FACTOR - x_frac) * (UPSCALING_FACTOR - y_frac);
-            uint32_t w10 = x_frac * (UPSCALING_FACTOR - y_frac);
-            uint32_t w01 = (UPSCALING_FACTOR - x_frac) * y_frac;
+            // Bilineare Interpolation Gewichtung
+            uint32_t w00 = (upscaling_factor - x_frac) * (upscaling_factor - y_frac);
+            uint32_t w10 = x_frac * (upscaling_factor - y_frac);
+            uint32_t w01 = (upscaling_factor - x_frac) * y_frac;
             uint32_t w11 = x_frac * y_frac;
 
-            // Gewichtete Summe bilden und durch die Gesamtfläche teilen
-            uint32_t total_divisor = UPSCALING_FACTOR * UPSCALING_FACTOR;
+            // Division durch die dynamische Gesamtfläche (upscaling_factor^2)
+            uint32_t total_divisor = upscaling_factor * upscaling_factor;
             uint16_t dst_p = (uint16_t) ((p00 * w00 + p10 * w10 + p01 * w01 + p11 * w11) / total_divisor);
 
             uint16_t color_swapped = __REV16(TemperatureConverter((float) dst_p / TEMP_SCALING));
 
-            for (int p = 0; p < NEW_PIXEL_SIZE; p++) {
+            for (int p = 0; p < new_pixel_size; p++) {
                 display_line_buffer[buf_idx++] = color_swapped;
             }
         }
 
-        for (int r = 0; r < NEW_PIXEL_SIZE; r++) {
-            ILI9341_Send_Data_Block((uint8_t *) display_line_buffer, DST_WIDTH * NEW_PIXEL_SIZE);
+        for (int r = 0; r < new_pixel_size; r++) {
+            ILI9341_Send_Data_Block((uint8_t *) display_line_buffer, dst_width * new_pixel_size);
         }
     }
 }
