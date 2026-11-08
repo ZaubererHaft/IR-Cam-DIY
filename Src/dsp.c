@@ -12,8 +12,8 @@
 // Beispiel-Definitionen für den Filter (in den Header oder global legen):
 // alpha_fx muss ein Wert zwischen 0 und 256 sein (256 = alpha von 1.0)
 // Beispiel für alpha = 0.25: (0.25 * 256) = 64
-#define ALPHA_FX       128
-#define ONE_MINUS_ALPHA (96 - ALPHA_FX)
+#define ALPHA_FX       96
+#define ONE_MINUS_ALPHA (256 - ALPHA_FX)
 
 // Flexibler Upscaling-Faktor (kann nun beliebig angepasst werden)
 #define UPSCALING_FACTOR 4
