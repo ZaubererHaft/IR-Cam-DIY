@@ -99,6 +99,10 @@ void ILI9341_Draw_Colour(uint16_t Colour);
 void ILI9341_Draw_Pixel(uint16_t X,uint16_t Y,uint16_t Colour);
 void ILI9341_Draw_Colour_Burst(uint16_t Colour, uint32_t Size);
 
+/**
+ *  Sends a data block to the address set with SetAddress before
+ */
+void ILI9341_Send_Data_Block(uint8_t *data, uint32_t size);
 
 void ILI9341_Draw_Rectangle(uint16_t X, uint16_t Y, uint16_t Width, uint16_t Height, uint16_t Colour);
 void ILI9341_Draw_Horizontal_Line(uint16_t X, uint16_t Y, uint16_t Width, uint16_t Colour);

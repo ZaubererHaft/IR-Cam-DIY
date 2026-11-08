@@ -462,3 +462,17 @@ void ILI9341_Draw_Vertical_Line(uint16_t X, uint16_t Y, uint16_t Height, uint16_
 	ILI9341_Draw_Colour_Burst(Colour, Height);
 }
 
+
+void ILI9341_Send_Data_Block(uint8_t *data, uint32_t size)
+{
+	HAL_GPIO_WritePin(LCD_DC_PORT, LCD_DC_PIN, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_RESET);
+
+	SPI2_TX_completed_flag = 0;
+
+	HAL_SPI_Transmit_DMA(HSPI_INSTANCE, (uint8_t*)data, size * 2);
+
+	while (SPI2_TX_completed_flag == 0);
+
+	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);
+}
