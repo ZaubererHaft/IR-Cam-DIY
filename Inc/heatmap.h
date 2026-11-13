@@ -5,15 +5,22 @@
 
 #include "config.h"
 
-#define COLOR_RGB565 uint16_t
+typedef union {
+    uint16_t raw;
 
-typedef COLOR_RGB565 (*HeatmapFunction)(float);
+    struct {
+        uint16_t b: 5; // 0..31
+        uint16_t g: 6; // 0..63
+        uint16_t r: 5; // 0..31
+    };
+} RGB565_t;
 
-COLOR_RGB565 Heatmap_TempScaledToRGB565(int16_t scaled_temp);
 
-COLOR_RGB565 Heatmap_TempToRGB565(float temp);
+RGB565_t Heatmap_TempScaledToRGB565(int16_t scaled_temp);
 
-const char * Heatmap_GetNameByIndex(uint32_t index);
+RGB565_t Heatmap_TempToRGB565(float temp_celsius);
+
+const char *Heatmap_GetNameByIndex(uint32_t index);
 
 uint32_t Heatmap_GetSize();
 

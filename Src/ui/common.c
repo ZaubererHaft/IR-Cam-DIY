@@ -48,7 +48,7 @@ static void Common_DrawHeatmap() {
     const float step = (current_config.tMax - current_config.tMin) / (float) chunks;
     for (int i = 0; i < chunks; ++i) {
         const float val = current_config.tMin + (float) i * step;
-        ILI9341_Draw_Rectangle(x, y, 15, 4, Heatmap_TempToRGB565(val));
+        ILI9341_Draw_Rectangle(x, y, 15, 4, Heatmap_TempToRGB565(val).raw);
         y += 4;
     }
 

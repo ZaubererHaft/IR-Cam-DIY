@@ -25,7 +25,7 @@
 static int16_t old_data[SRC_WIDTH * SRC_HEIGHT];
 static int16_t current_filtered[SRC_WIDTH * SRC_HEIGHT];
 
-static COLOR_RGB565 display_line_buffer[MAX_DST_WIDTH * MAX_NEW_PIXEL_SIZE];
+static uint16_t display_line_buffer[MAX_DST_WIDTH * MAX_NEW_PIXEL_SIZE];
 
 void DSP_Init(void) {
     memset(old_data, 0xFF, sizeof(old_data));
@@ -95,7 +95,7 @@ void DSP_ProcessAndDisplay() {
             int32_t total_divisor = upscaling_factor * upscaling_factor;
             int16_t dst_p = (int16_t) ((p00 * w00 + p10 * w10 + p01 * w01 + p11 * w11) / total_divisor);
 
-            COLOR_RGB565 color_swapped = __REV16(Heatmap_TempScaledToRGB565(dst_p));
+            uint16_t color_swapped = __REV16(Heatmap_TempScaledToRGB565(dst_p).raw);
 
             for (int p = 0; p < new_pixel_size; p++) {
                 display_line_buffer[buf_idx++] = color_swapped;

@@ -1,31 +1,53 @@
 #include "heatmap.h"
 
-#define TEMP_SCALING 100.0f
+// Defines
+#define TEMPERATURE_SCALING (10)
+#define TEMPERATURE_MIN_VALUE (-20)
+#define TEMPERATURE_MAX_VALUE (120)
 
-uint16_t TempToRGB565(float temp);
+#define LUT_SIZE ((TEMPERATURE_MAX_VALUE - TEMPERATURE_MIN_VALUE) * TEMPERATURE_SCALING)
 
-uint16_t TempToGray565(float temp);
+#define GET_INDEX(scaled_temp) (scaled_temp - TEMPERATURE_MIN_VALUE * TEMPERATURE_SCALING)
 
-uint16_t TempToGray565_Inverted(float temp);
+// Typedefs
+typedef RGB565_t (*HeatmapFunction)(int16_t);
 
-uint16_t TempToGray565_InvertedFast(float temp);
+// Prototypes
+static RGB565_t ToMagma(int16_t temp);
 
-uint16_t TempToRainbow565_Fast(float temp);
+static RGB565_t ToHotWhite(int16_t temp);
 
-uint16_t TempToMagma565_Fast(float temp);
+static RGB565_t ToGrayInverted(int16_t temp);
 
+static RGB565_t ToGreen(int16_t temp);
+
+static RGB565_t ToGray(int16_t temp);
+
+static RGB565_t ToRed(int16_t temp);
+
+// Static Variables
+static const char *heatmap_names[] = {"Magma", "HotWhite", "Gray", "Gray (i)", "Red", "Green"};
 static HeatmapFunction available_heatmaps[] = {
-    &TempToMagma565_Fast, &TempToGray565, &TempToGray565_InvertedFast, &TempToRainbow565_Fast
+    &ToMagma, &ToHotWhite, &ToGray, &ToGrayInverted, &ToRed, &ToGreen
 };
+static RGB565_t color_lut[LUT_SIZE];
+static uint16_t curr_temp_min;
+static uint16_t curr_temp_max;
 
-static const char *heatmap_names[] = {"Magma", "Gray", "Gray (i)", "Rainbow"};
-static Config curr_config;
-
-static HeatmapFunction Heatmap_GetByIndex(uint32_t index) {
-    if (index >= Heatmap_GetSize()) {
-        return available_heatmaps[0];
+// Functions
+RGB565_t Heatmap_TempScaledToRGB565(int16_t scaled_temp) {
+    if (scaled_temp <= TEMPERATURE_MIN_VALUE * TEMPERATURE_SCALING) {
+        return color_lut[0];
     }
-    return available_heatmaps[index];
+    if (scaled_temp >= TEMPERATURE_MAX_VALUE * TEMPERATURE_SCALING) {
+        return color_lut[LUT_SIZE - 1];
+    }
+
+    return color_lut[GET_INDEX(scaled_temp)];
+}
+
+RGB565_t Heatmap_TempToRGB565(float temp_celsius) {
+    return Heatmap_TempScaledToRGB565(Temperature_FromFloat(temp_celsius));
 }
 
 const char *Heatmap_GetNameByIndex(uint32_t index) {
@@ -39,216 +61,136 @@ uint32_t Heatmap_GetSize() {
     return sizeof(available_heatmaps) / sizeof(available_heatmaps[0]);
 }
 
-static int16_t cachedMin = 0;
-static int16_t cachedMax = 0;
-static int16_t greenThresholdLUT[64];
+static void init_lut(uint32_t heatmap_index) {
+    const HeatmapFunction func = available_heatmaps[heatmap_index];
 
-void UpdateGreenLUT(int16_t tempMin, int16_t tempMax) {
-    // Nur neu berechnen, wenn sich die Grenzen geändert haben
-    if (tempMin == cachedMin && tempMax == cachedMax) {
-        return;
-    }
-
-    cachedMin = tempMin;
-    cachedMax = tempMax;
-
-    // Fallback bei ungültigen Grenzen
-    if (tempMax <= tempMin) {
-        for (int i = 0; i < 64; i++) {
-            greenThresholdLUT[i] = 32767;
-        }
-        return;
-    }
-
-    int32_t span = (int32_t)tempMax - (int32_t)tempMin;
-
-    // 64 Temperatur-Schwellwerte vorberechnen
-    for (int i = 0; i < 64; i++) {
-        // Schwellwert für Stufe i (inkl. halber Schrittweite für saubere Rundung)
-        int32_t offset = ((int32_t)i * span + (span / 128)) / 63;
-        greenThresholdLUT[i] = (int16_t)((int32_t)tempMin + offset);
+    for (int32_t i = 0; i < LUT_SIZE; i++) {
+        int32_t scaled_temp = TEMPERATURE_MIN_VALUE * TEMPERATURE_SCALING + i;
+        color_lut[i] = func((int16_t) scaled_temp);
     }
 }
 
 void Heatmap_ConfigObserver(Config config) {
-    curr_config = config;
-    UpdateGreenLUT(curr_config.tMin * TEMP_SCALING, curr_config.tMax * TEMP_SCALING);
+    curr_temp_min = Temperature_FromFloat(config.tMin);
+    curr_temp_max = Temperature_FromFloat(config.tMax);
+
+    init_lut(config.heatmap_index);
 }
 
 int16_t Temperature_FromFloat(float temp_cel) {
-    return (int16_t) (temp_cel * TEMP_SCALING);
+    return (int16_t) (temp_cel * TEMPERATURE_SCALING);
 }
 
 float Temperature_ToFloat(int16_t temp_cel) {
-    return (float) temp_cel / TEMP_SCALING;
+    return (float) temp_cel / (float) TEMPERATURE_SCALING;
 }
 
-uint16_t TempToGreenRGB565(int16_t temp) {
-    // Schneller Exit für Extremwerte
-    if (temp <= greenThresholdLUT[0])  return 0x0000;
-    if (temp >= greenThresholdLUT[63]) return 0x07E0;
+//Built-In Heatmaps
+RGB565_t ToGreen(int16_t temp) {
+    RGB565_t color = {.raw = 0};
 
-    // Binäre Suche über 64 Elemente (immer exakt 6 Schritte: 2^6 = 64)
-    uint8_t low = 0;
-    uint8_t high = 63;
-
-    while (low < high) {
-        uint8_t mid = (low + high + 1) >> 1;
-        if (temp >= greenThresholdLUT[mid]) {
-            low = mid;
-        } else {
-            high = mid - 1;
-        }
+    if (temp <= curr_temp_min) {
+        color.g = 0;
+        return color;
+    }
+    if (temp >= curr_temp_max) {
+        color.g = 63;
+        return color;
     }
 
-    // In RGB565-Grün-Position schieben (Bits 5..10)
-    return ((uint16_t)low << 5);
+    int32_t span = curr_temp_max - curr_temp_min;
+    color.g = (uint16_t) (((int32_t) (temp - curr_temp_min) * 63) / span);
+
+    return color;
 }
 
-COLOR_RGB565 Heatmap_TempScaledToRGB565(int16_t scaled_temp) {
-    return TempToGreenRGB565(scaled_temp);
+RGB565_t ToRed(int16_t temp) {
+    RGB565_t color = {.raw = 0};
+
+    if (temp <= curr_temp_min) {
+        color.r = 0;
+        return color;
+    }
+    if (temp >= curr_temp_max) {
+        color.r = 31;
+        return color;
+    }
+
+    int32_t span = curr_temp_max - curr_temp_min;
+    color.r = (uint16_t) (((int32_t) (temp - curr_temp_min) * 31) / span);
+
+    return color;
 }
 
-COLOR_RGB565 Heatmap_TempToRGB565(float temp) {
-    return Heatmap_TempScaledToRGB565((int16_t) (temp * TEMP_SCALING));
+static uint8_t NormalizeTemp255(int16_t temp) {
+    if (temp <= curr_temp_min) return 0;
+    if (temp >= curr_temp_max) return 255;
+
+    int32_t span = curr_temp_max - curr_temp_min;
+    return (uint8_t) (((int32_t) (temp - curr_temp_min) * 255) / span);
 }
 
-#define RGB565(r, g, b) \
-(((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F))
+static RGB565_t MakeColor565(uint8_t r8, uint8_t g8, uint8_t b8) {
+    RGB565_t color;
+    color.r = r8 / 8; // 0..31
+    color.g = g8 / 4; // 0..63
+    color.b = b8 / 8; // 0..31
+    return color;
+}
 
-uint16_t TempToRGB565(float temp) {
-    // Clamp
-    if (temp < curr_config.tMin) temp = curr_config.tMin;
-    if (temp > curr_config.tMax) temp = curr_config.tMax;
+RGB565_t ToGray(int16_t temp) {
+    uint8_t val = NormalizeTemp255(temp);
+    return MakeColor565(val, val, val);
+}
 
-    // Normalize (0.0 – 1.0)
-    float norm = (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin);
+RGB565_t ToGrayInverted(int16_t temp) {
+    uint8_t val = 255 - NormalizeTemp255(temp);
+    return MakeColor565(val, val, val);
+}
 
+RGB565_t ToHotWhite(int16_t temp) {
+    uint8_t val = NormalizeTemp255(temp);
     uint8_t r, g, b;
 
-    // Blue → Green → Red
-    if (norm < 0.5f) {
-        // Blue → Green
-        float t = norm * 2.0f;
-        r = 0;
-        g = (uint8_t) (t * 63);
-        b = (uint8_t) ((1.0f - t) * 31);
-    } else {
-        // Green → Red
-        float t = (norm - 0.5f) * 2.0f;
-        r = (uint8_t) (t * 31);
-        g = (uint8_t) ((1.0f - t) * 63);
-        b = 0;
-    }
-
-    return RGB565(r, g, b);
-}
-
-uint16_t TempToGray565(float temp) {
-    // Clamp
-    if (temp < curr_config.tMin) temp = curr_config.tMin;
-    if (temp > curr_config.tMax) temp = curr_config.tMax;
-
-    // Normalize (0.0 – 1.0)
-    float norm = (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin);
-
-    // Convert to grayscale intensity
-    uint8_t gray5 = (uint8_t) (norm * 31.0f); // for R and B (5-bit)
-    uint8_t gray6 = (uint8_t) (norm * 63.0f); // for G (6-bit)
-
-    return RGB565(gray5, gray6, gray5);
-}
-
-uint16_t TempToGray565_Inverted(float temp) {
-    // Clamp
-    if (temp < curr_config.tMin) temp = curr_config.tMin;
-    if (temp > curr_config.tMax) temp = curr_config.tMax;
-
-    // Normalize
-    float norm = (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin);
-
-    // Invert
-    norm = 1.0f - norm;
-
-    uint8_t gray5 = (uint8_t) (norm * 31.0f);
-    uint8_t gray6 = (uint8_t) (norm * 63.0f);
-
-    return RGB565(gray5, gray6, gray5);
-}
-
-uint16_t TempToGray565_InvertedFast(float temp) {
-    if (temp < curr_config.tMin) temp = curr_config.tMin;
-    if (temp > curr_config.tMax) temp = curr_config.tMax;
-
-    float norm = (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin);
-
-    // Invert
-    norm = 1.0f - norm;
-
-    // Fast gamma approx
-    norm = norm * norm;
-
-    uint8_t gray5 = (uint8_t) (norm * 31.0f);
-    uint8_t gray6 = (uint8_t) (norm * 63.0f);
-
-    return RGB565(gray5, gray6, gray5);
-}
-
-uint16_t TempToRainbow565_Fast(float temp) {
-    if (temp < curr_config.tMin) temp = curr_config.tMin;
-    if (temp > curr_config.tMax) temp = curr_config.tMax;
-
-    uint8_t x = (uint8_t) (255.0f * (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin));
-
-    uint8_t r = 0, g = 0, b = 0;
-
-    if (x < 64) {
-        r = 0;
-        g = x;
-        b = 31;
-    } else if (x < 128) {
-        r = 0;
-        g = 63;
-        b = 31 - ((x - 64) >> 1);
-    } else if (x < 192) {
-        r = (x - 128) >> 1;
-        g = 63;
-        b = 0;
-    } else {
-        r = 31;
-        g = 63 - (x - 192);
-        b = 0;
-    }
-
-    return RGB565(r, g, b);
-}
-
-uint16_t TempToMagma565_Fast(float temp) {
-    if (temp < curr_config.tMin) temp = curr_config.tMin;
-    if (temp > curr_config.tMax) temp = curr_config.tMax;
-
-    uint8_t x = (uint8_t) (255.0f * (temp - curr_config.tMin) / (curr_config.tMax - curr_config.tMin));
-
-    uint8_t r = 0, g = 0, b = 0;
-
-    if (x < 64) {
-        r = x >> 3;
+    if (val < 85) {
+        r = val * 3;
         g = 0;
-        b = x >> 2;
-    } else if (x < 128) {
-        r = 8 + ((x - 64) >> 2);
-        g = 0;
-        b = 16 - ((x - 64) >> 3);
-    } else if (x < 192) {
-        r = 24 + ((x - 128) >> 4);
-        g = (x - 128) >> 1;
+        b = 0;
+    } else if (val < 170) {
+        r = 255;
+        g = (val - 85) * 3;
         b = 0;
     } else {
-        r = 31;
-        g = 30 + ((x - 192) >> 2);
-        b = (x - 192) >> 4;
-        if (g > 63) g = 63;
+        r = 255;
+        g = 255;
+        b = (val - 170) * 3;
     }
+    return MakeColor565(r, g, b);
+}
 
-    return RGB565(r, g, b);
+RGB565_t ToMagma(int16_t temp) {
+    uint8_t val = NormalizeTemp255(temp);
+    uint8_t r, g, b;
+
+    if (val < 64) {
+        r = val;
+        g = 0;
+        b = val * 2;
+    } else if (val < 128) {
+        uint8_t step = val - 64;
+        r = 64 + (step * 2);
+        g = step / 2;
+        b = 128;
+    } else if (val < 192) {
+        uint8_t step = val - 128;
+        r = 192 + step;
+        g = 32 + (step * 2);
+        b = 128 - (step * 2);
+    } else {
+        uint8_t step = val - 192;
+        r = 255;
+        g = 160 + ((step * 95) / 63);
+        b = step * 3;
+    }
+    return MakeColor565(r, g, b);
 }

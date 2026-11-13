@@ -232,7 +232,7 @@ uint32_t FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, cons
     bitmap_buffer[65] = 0x00;
 
     for (int i = 0; i < size; ++i) {
-        const uint16_t col = Heatmap_TempScaledToRGB565(image_scaled[i]);
+        const uint16_t col = Heatmap_TempScaledToRGB565(image_scaled[i]).raw;
         bitmap_buffer[66 + i * 2] = col & 0xFF;
         bitmap_buffer[66 + i * 2 + 1] = col >> 8;
     }

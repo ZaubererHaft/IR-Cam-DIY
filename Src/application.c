@@ -81,7 +81,7 @@ void Task_Init(void) {
     }
 
     config.tMin = 15;
-    config.tMax = 37;
+    config.tMax = 35;
 
     Config_InformObservers(config);
 
