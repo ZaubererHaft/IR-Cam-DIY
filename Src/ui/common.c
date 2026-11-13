@@ -37,8 +37,6 @@ static void CleanUp_Record(void) {
 static void Common_DrawHeatmap() {
     CleanUp_Heatmap();
 
-    const HeatmapFunction heatmap = Heatmap_GetByIndex(current_config.heatmap_index);
-
     int x = 270;
     int y = 50;
 
@@ -50,7 +48,7 @@ static void Common_DrawHeatmap() {
     const float step = (current_config.tMax - current_config.tMin) / (float) chunks;
     for (int i = 0; i < chunks; ++i) {
         const float val = current_config.tMin + (float) i * step;
-        ILI9341_Draw_Rectangle(x, y, 15, 4, heatmap(val));
+        ILI9341_Draw_Rectangle(x, y, 15, 4, Heatmap_TempToRGB565(val));
         y += 4;
     }
 

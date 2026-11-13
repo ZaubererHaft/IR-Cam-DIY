@@ -5,16 +5,11 @@
 
 #include "config.h"
 
-uint16_t TempToRGB565(float temp);
-uint16_t TempToGray565(float temp);
-uint16_t TempToGray565_Inverted(float temp);
-uint16_t TempToGray565_InvertedFast(float temp);
-uint16_t TempToRainbow565_Fast(float temp);
-uint16_t TempToMagma565_Fast(float temp);
-
 typedef uint16_t (*HeatmapFunction)(float);
 
-HeatmapFunction Heatmap_GetByIndex(uint32_t index);
+uint16_t Heatmap_TempScaledToRGB565(uint16_t scaled_temp);
+
+uint16_t Heatmap_TempToRGB565(float temp);
 
 const char * Heatmap_GetNameByIndex(uint32_t index);
 

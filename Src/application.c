@@ -69,7 +69,6 @@ void Task_Init(void) {
     HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
 
     Config_AddObserver(UserInterface_ConfigObserver);
-    Config_AddObserver(FileSystem_ConfigObserver);
     Config_AddObserver(Heatmap_ConfigObserver);
     Config_AddObserver(DSP_ConfigObserver);
 
@@ -82,7 +81,7 @@ void Task_Init(void) {
     }
 
     config.tMin = 15;
-    config.tMax = 40;
+    config.tMax = 37;
 
     Config_InformObservers(config);
 
@@ -98,7 +97,7 @@ void Task_Init(void) {
         Error_Handler();
     }
 
-    MX_USB_DEVICE_Init();
+    //MX_USB_DEVICE_Init();
 
     DSP_Init();
 
@@ -106,7 +105,7 @@ void Task_Init(void) {
         Error_Handler();
     }
 
-    UserInterface_ShowDialog(" Welcome!");
+    //UserInterface_ShowDialog(" Welcome!");
 
     time = HAL_GetTick();
 }

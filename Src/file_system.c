@@ -8,7 +8,6 @@
 
 static FATFS fs;
 static uint8_t bitmap_buffer[32 * 24 * 2 + 66];
-static HeatmapFunction TemperatureConverter;
 
 #define CONFIG_FILE_NAME "config.txt"
 
@@ -131,10 +130,6 @@ uint32_t FileSystem_WriteConfig(const Config *config) {
 }
 
 
-void FileSystem_ConfigObserver(Config config) {
-    TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
-}
-
 uint32_t FileSystem_WriteBitmap(const uint16_t *image_scaled, uint32_t size, const char *name) {
     bitmap_buffer[0] = 'B';
     bitmap_buffer[1] = 'M';
@@ -237,8 +232,7 @@ uint32_t FileSystem_WriteBitmap(const uint16_t *image_scaled, uint32_t size, con
     bitmap_buffer[65] = 0x00;
 
     for (int i = 0; i < size; ++i) {
-        float temp = (float) image_scaled[i] / TEMP_SCALING;
-        const uint16_t col = TemperatureConverter(temp);
+        const uint16_t col = Heatmap_TempScaledToRGB565(image_scaled[i]);
         bitmap_buffer[66 + i * 2] = col & 0xFF;
         bitmap_buffer[66 + i * 2 + 1] = col >> 8;
     }

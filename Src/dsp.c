@@ -22,7 +22,6 @@
 #define MAX_DST_WIDTH        (SRC_WIDTH * MAX_UPSCALING_FACTOR)
 #define MAX_NEW_PIXEL_SIZE   8
 
-static HeatmapFunction TemperatureConverter;
 static uint16_t old_data[SRC_WIDTH * SRC_HEIGHT];
 static uint16_t current_filtered[SRC_WIDTH * SRC_HEIGHT];
 
@@ -96,7 +95,7 @@ void DSP_ProcessAndDisplay() {
             uint32_t total_divisor = upscaling_factor * upscaling_factor;
             uint16_t dst_p = (uint16_t) ((p00 * w00 + p10 * w10 + p01 * w01 + p11 * w11) / total_divisor);
 
-            uint16_t color_swapped = __REV16(TemperatureConverter((float) dst_p / TEMP_SCALING));
+            uint16_t color_swapped = __REV16(Heatmap_TempScaledToRGB565(dst_p));
 
             for (int p = 0; p < new_pixel_size; p++) {
                 display_line_buffer[buf_idx++] = color_swapped;
@@ -110,5 +109,4 @@ void DSP_ProcessAndDisplay() {
 }
 
 void DSP_ConfigObserver(Config config) {
-    TemperatureConverter = Heatmap_GetByIndex(config.heatmap_index);
 }

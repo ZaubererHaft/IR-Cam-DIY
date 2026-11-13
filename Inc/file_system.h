@@ -11,6 +11,4 @@ uint32_t FileSystem_WriteBitmap(const uint16_t *image_scaled, uint32_t size, con
 
 uint32_t FileSystem_WriteConfig(const Config *config);
 
-void FileSystem_ConfigObserver(Config config);
-
 #endif //CAM_FILE_SYSTEM_H
