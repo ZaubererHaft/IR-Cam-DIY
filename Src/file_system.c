@@ -130,7 +130,7 @@ uint32_t FileSystem_WriteConfig(const Config *config) {
 }
 
 
-uint32_t FileSystem_WriteBitmap(const uint16_t *image_scaled, uint32_t size, const char *name) {
+uint32_t FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, const char *name) {
     bitmap_buffer[0] = 'B';
     bitmap_buffer[1] = 'M';
 

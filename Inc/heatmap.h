@@ -5,11 +5,13 @@
 
 #include "config.h"
 
-typedef uint16_t (*HeatmapFunction)(float);
+#define COLOR_RGB565 uint16_t
 
-uint16_t Heatmap_TempScaledToRGB565(uint16_t scaled_temp);
+typedef COLOR_RGB565 (*HeatmapFunction)(float);
 
-uint16_t Heatmap_TempToRGB565(float temp);
+COLOR_RGB565 Heatmap_TempScaledToRGB565(int16_t scaled_temp);
+
+COLOR_RGB565 Heatmap_TempToRGB565(float temp);
 
 const char * Heatmap_GetNameByIndex(uint32_t index);
 
@@ -17,6 +19,9 @@ uint32_t Heatmap_GetSize();
 
 void Heatmap_ConfigObserver(Config config);
 
-#define TEMP_SCALING 1000.0f
+int16_t Temperature_FromFloat(float temp_cel);
+
+float Temperature_ToFloat(int16_t temp_cel);
+
 
 #endif //CAM_HEATMAP_H

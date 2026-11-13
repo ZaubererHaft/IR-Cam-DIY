@@ -478,7 +478,7 @@ int MLX90640_GetCurMode(uint8_t slaveAddr)
 
 //------------------------------------------------------------------------------
 
-void MLX90640_CalculateTo(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, uint16_t *result)
+void MLX90640_CalculateTo(uint16_t *frameData, const paramsMLX90640 *params, float emissivity, float tr, int16_t *result)
 {
     // 1. Pre-calculate common environmental constants
     float vdd = MLX90640_GetVdd(frameData, params);
@@ -551,7 +551,7 @@ void MLX90640_CalculateTo(uint16_t *frameData, const paramsMLX90640 *params, flo
 
             // Final Refinement
             float temp = sqrtf(sqrtf(irData / (alphaComp * alphaCorrR[range] * (1.0f + params->ksTo[range] * (temperature - params->ct[range]))) + taTr)) - 273.15f;
-            result[pixelNumber] = (uint16_t) (temp * TEMP_SCALING);
+            result[pixelNumber] = Temperature_FromFloat(temp);
 
         }
     }

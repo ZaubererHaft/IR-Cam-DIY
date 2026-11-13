@@ -25,7 +25,7 @@ static float emissivity = 0.95f;
 static uint16_t rx_buff[834];
 static uint16_t calc_buff[834];
 
-static uint16_t ir_image_scaled_100[32 * 24];
+static int16_t ir_image_scaled_100[32 * 24];
 
 static int new_ir_data_available = 0;
 
@@ -76,7 +76,7 @@ int32_t MLX90640_ReadTemperature(uint32_t request_next) {
 }
 
 
-uint16_t *MLX90640_GetIRImageScaled(void) {
+int16_t *MLX90640_GetIRImageScaled(void) {
     return ir_image_scaled_100;
 }
 

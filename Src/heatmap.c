@@ -1,5 +1,6 @@
 #include "heatmap.h"
 
+#define TEMP_SCALING 100.0f
 
 uint16_t TempToRGB565(float temp);
 
@@ -20,7 +21,7 @@ static HeatmapFunction available_heatmaps[] = {
 static const char *heatmap_names[] = {"Magma", "Gray", "Gray (i)", "Rainbow"};
 static Config curr_config;
 
-HeatmapFunction Heatmap_GetByIndex(uint32_t index) {
+static HeatmapFunction Heatmap_GetByIndex(uint32_t index) {
     if (index >= Heatmap_GetSize()) {
         return available_heatmaps[0];
     }
@@ -38,17 +39,78 @@ uint32_t Heatmap_GetSize() {
     return sizeof(available_heatmaps) / sizeof(available_heatmaps[0]);
 }
 
+static int16_t cachedMin = 0;
+static int16_t cachedMax = 0;
+static int16_t greenThresholdLUT[64];
+
+void UpdateGreenLUT(int16_t tempMin, int16_t tempMax) {
+    // Nur neu berechnen, wenn sich die Grenzen geändert haben
+    if (tempMin == cachedMin && tempMax == cachedMax) {
+        return;
+    }
+
+    cachedMin = tempMin;
+    cachedMax = tempMax;
+
+    // Fallback bei ungültigen Grenzen
+    if (tempMax <= tempMin) {
+        for (int i = 0; i < 64; i++) {
+            greenThresholdLUT[i] = 32767;
+        }
+        return;
+    }
+
+    int32_t span = (int32_t)tempMax - (int32_t)tempMin;
+
+    // 64 Temperatur-Schwellwerte vorberechnen
+    for (int i = 0; i < 64; i++) {
+        // Schwellwert für Stufe i (inkl. halber Schrittweite für saubere Rundung)
+        int32_t offset = ((int32_t)i * span + (span / 128)) / 63;
+        greenThresholdLUT[i] = (int16_t)((int32_t)tempMin + offset);
+    }
+}
+
 void Heatmap_ConfigObserver(Config config) {
     curr_config = config;
+    UpdateGreenLUT(curr_config.tMin * TEMP_SCALING, curr_config.tMax * TEMP_SCALING);
 }
 
-uint16_t Heatmap_TempScaledToRGB565(uint16_t scaled_temp) {
-    HeatmapFunction hf = Heatmap_GetByIndex(curr_config.heatmap_index);
-    return hf((float) scaled_temp / TEMP_SCALING);
+int16_t Temperature_FromFloat(float temp_cel) {
+    return (int16_t) (temp_cel * TEMP_SCALING);
 }
 
-uint16_t Heatmap_TempToRGB565(float temp) {
-    return Heatmap_TempScaledToRGB565((uint16_t) (temp * TEMP_SCALING));
+float Temperature_ToFloat(int16_t temp_cel) {
+    return (float) temp_cel / TEMP_SCALING;
+}
+
+uint16_t TempToGreenRGB565(int16_t temp) {
+    // Schneller Exit für Extremwerte
+    if (temp <= greenThresholdLUT[0])  return 0x0000;
+    if (temp >= greenThresholdLUT[63]) return 0x07E0;
+
+    // Binäre Suche über 64 Elemente (immer exakt 6 Schritte: 2^6 = 64)
+    uint8_t low = 0;
+    uint8_t high = 63;
+
+    while (low < high) {
+        uint8_t mid = (low + high + 1) >> 1;
+        if (temp >= greenThresholdLUT[mid]) {
+            low = mid;
+        } else {
+            high = mid - 1;
+        }
+    }
+
+    // In RGB565-Grün-Position schieben (Bits 5..10)
+    return ((uint16_t)low << 5);
+}
+
+COLOR_RGB565 Heatmap_TempScaledToRGB565(int16_t scaled_temp) {
+    return TempToGreenRGB565(scaled_temp);
+}
+
+COLOR_RGB565 Heatmap_TempToRGB565(float temp) {
+    return Heatmap_TempScaledToRGB565((int16_t) (temp * TEMP_SCALING));
 }
 
 #define RGB565(r, g, b) \
