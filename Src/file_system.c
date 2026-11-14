@@ -131,6 +131,46 @@ bool FileSystem_WriteConfig(const Config *config) {
 }
 
 
+typedef uint16_t (*ProcessFunction)(int16_t);
+
+static uint16_t temp_to_color(int16_t temp) {
+    return Heatmap_TempScaledToRGB565(temp).raw;
+}
+
+static uint16_t temp_identity_cast(int16_t temp) {
+    return (uint16_t)temp;
+}
+
+static bool f_write_blockwise(FIL *fil, uint32_t size, const int16_t *data, ProcessFunction function) {
+    uint32_t values_left = size;
+    uint32_t buff_size_in_values = BUFFER_SIZE / 2;
+    uint32_t value_pos = 0;
+
+    while (values_left > 0) {
+        const uint32_t pixels_to_write = values_left >= buff_size_in_values ? buff_size_in_values : values_left;
+
+        for (uint32_t j = 0; j < pixels_to_write; ++j) {
+            const uint16_t temp = function(data[value_pos + j]);
+            buffer[j * 2] = temp & 0xFF;
+            buffer[j * 2 + 1] = temp >> 8;
+        }
+
+        value_pos += pixels_to_write;
+
+        UINT written;
+        const FRESULT res = f_write(fil, buffer, pixels_to_write * 2, &written);
+        if (res != FR_OK || written != pixels_to_write * 2) {
+            return false;
+        }
+
+        values_left -= pixels_to_write;
+    }
+
+    return true;
+}
+
+
+
 bool FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, const char *name) {
     buffer[0] = 'B';
     buffer[1] = 'M';
@@ -247,36 +287,17 @@ bool FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, const ch
     }
 
     // write data
-    uint32_t pixels_left = size;
-    uint32_t buff_size_in_pixels = BUFFER_SIZE / 2;
-    uint32_t pixel_pos = 0;
+    bool ret = f_write_blockwise(&fil, size, image_scaled, &temp_to_color);
+    return f_close(&fil) == FR_OK && ret;
+}
 
-    while (pixels_left > 0) {
-        const uint32_t pixels_to_write = pixels_left >= buff_size_in_pixels ? buff_size_in_pixels : pixels_left;
 
-        for (uint32_t j = 0; j < pixels_to_write; ++j) {
-            const uint16_t col = Heatmap_TempScaledToRGB565(image_scaled[pixel_pos + j]).raw;
-            buffer[j * 2] = col & 0xFF;
-            buffer[j * 2 + 1] = col >> 8;
-        }
-
-        pixel_pos += pixels_to_write;
-
-        res = f_write(&fil, buffer, pixels_to_write * 2, &written);
-        if (res != FR_OK || written != pixels_to_write * 2) {
-            (void) f_close(&fil);
-            return false;
-        }
-
-        pixels_left -= pixels_to_write;
+bool FileSystem_WriteRaw(const int16_t *image_raw, uint32_t size, const char *name) {
+    FIL fil;
+    FRESULT res = f_open(&fil, name, FA_CREATE_ALWAYS | FA_WRITE);
+    if (res != FR_OK) {
+        return false;
     }
-
-    return f_close(&fil) == FR_OK;
-}
-
-FRESULT f_write_blockwise() {
-}
-
-
-bool FileSystem_WriteRaw(const int16_t *image_scaled, uint32_t size, const char *name) {
+    bool ret = f_write_blockwise(&fil, size, image_raw, &temp_identity_cast);
+    return f_close(&fil) == FR_OK && ret;
 }

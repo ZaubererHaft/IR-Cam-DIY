@@ -97,7 +97,7 @@ void Task_Init(void) {
         Error_Handler();
     }
 
-    //MX_USB_DEVICE_Init();
+    MX_USB_DEVICE_Init();
 
     DSP_Init();
 
@@ -138,16 +138,24 @@ void Task_ReadAnalogData(void) {
 
 void Task_WriteImage(void) {
     if (save_image) {
+        bool status = false;
         char buff[32] = {0};
-        const int32_t written = snprintf(buff, sizeof(buff), "img%lu.bmp", config.image_counter);
+
+        int32_t written = snprintf(buff, sizeof(buff), "img%lu.bmp", config.image_counter);
         if (written > 0) {
-            uint32_t status = FileSystem_WriteBitmap(MLX90640_GetIRImageScaled(), 32 * 24, buff);
+            status = FileSystem_WriteBitmap(MLX90640_GetIRImageScaled(), 32 * 24, buff);
+        }
+
+        written = snprintf(buff, sizeof(buff), "img%lu.bin", config.image_counter);
+        if (written > 0) {
+            status = FileSystem_WriteRaw(MLX90640_GetIRImageScaled(), 32 * 24, buff);
+        }
+
+        if (status) {
             config.image_counter++;
             synch_config = 1;
-
-            if (!status) {
-                Error_Handler();
-            }
+        } else {
+            Error_Handler();
         }
         save_image = 0;
     }

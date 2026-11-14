@@ -9,7 +9,7 @@ bool FileSystem_Init(uint8_t *buffer, Config *out_config);
 
 bool FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, const char *name);
 
-bool FileSystem_WriteRaw(const int16_t *image_scaled, uint32_t size, const char *name);
+bool FileSystem_WriteRaw(const int16_t *image_raw, uint32_t size, const char *name);
 
 bool FileSystem_WriteConfig(const Config *config);
 
