@@ -5,6 +5,10 @@
 
 #include "config.h"
 
+#define TEMPERATURE_SCALING (10)
+#define TEMPERATURE_MIN_VALUE (-20)
+#define TEMPERATURE_MAX_VALUE (120)
+
 typedef union {
     uint16_t raw;
 

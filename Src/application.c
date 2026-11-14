@@ -179,8 +179,11 @@ void InterfaceCallback_RequestSaveImage(void) {
     save_image = true;
 }
 
-void InterfaceCallback_RequestNewHeatmap(uint32_t index) {
-    config.heatmap_index = index;
+void InterfaceCallback_RequestNewSettings(Config settings) {
+    uint32_t old_img_counter = config.image_counter;
+    config = settings;
+    config.image_counter = old_img_counter;
+
     inform_observers = true;
     synch_config = true;
 }

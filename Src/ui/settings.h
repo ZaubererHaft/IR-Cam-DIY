@@ -9,6 +9,10 @@ void Settings_StickMovedUp(void);
 
 void Settings_StickMovedDown(void);
 
+void Settings_StickMovedRight(void);
+
+void Settings_StickMovedLeft(void);
+
 void Settings_StickPressed(void);
 
 void Settings_ConfigChanged(Config config);

@@ -3,8 +3,10 @@
 
 #include <stdint.h>
 
+#include "config.h"
+
 void InterfaceCallback_RequestSaveImage(void);
 
-void InterfaceCallback_RequestNewHeatmap(uint32_t index);
+void InterfaceCallback_RequestNewSettings(Config index);
 
 #endif //CAM_INTERFACE_CALLBACK_H

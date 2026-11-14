@@ -58,6 +58,8 @@ void Navigation_InitById(UIFrameIdentifier frame_initial) {
     settings_frame.stick_down_callback = Settings_StickMovedDown;
     settings_frame.stick_up_callback = Settings_StickMovedUp;
     settings_frame.stick_pressed_callback = Settings_StickPressed;
+    settings_frame.stick_right_callback = Settings_StickMovedRight;
+    settings_frame.stick_left_callback = Settings_StickMovedLeft;
 
     dialog_frame.id = FRAME_DIALOG;
     dialog_frame.init_function = Dialog_DrawInitial;
