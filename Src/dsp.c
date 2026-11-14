@@ -22,9 +22,10 @@
 #define MAX_DST_WIDTH        (SRC_WIDTH * MAX_UPSCALING_FACTOR)
 #define MAX_NEW_PIXEL_SIZE   8
 
+static Config curr_config;
+
 static int16_t old_data[SRC_WIDTH * SRC_HEIGHT];
 static int16_t current_filtered[SRC_WIDTH * SRC_HEIGHT];
-
 static uint16_t display_line_buffer[MAX_DST_WIDTH * MAX_NEW_PIXEL_SIZE];
 
 void DSP_Init(void) {
@@ -39,12 +40,11 @@ static int16_t get_src_pixel(const int16_t *buffer, int32_t x, int32_t y) {
     return buffer[y * SRC_WIDTH + x];
 }
 
-int32_t upscaling_factor = 2;
 
 
 // Der Upscaling-Faktor wird nun als Parameter übergeben
 void DSP_ProcessAndDisplay() {
-    // Dynamische Berechnung der Ziel-Dimensionen zur Laufzeit
+    int32_t upscaling_factor = curr_config.upscaling_factor;
     int32_t dst_width = SRC_WIDTH * upscaling_factor;
     int32_t dst_height = SRC_HEIGHT * upscaling_factor;
     int32_t new_pixel_size = 8 / upscaling_factor;
@@ -108,5 +108,7 @@ void DSP_ProcessAndDisplay() {
     }
 }
 
+
 void DSP_ConfigObserver(Config config) {
+    curr_config = config;
 }

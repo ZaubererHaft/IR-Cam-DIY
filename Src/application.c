@@ -80,9 +80,6 @@ void Task_Init(void) {
         Error_Handler();
     }
 
-    config.tMin = 15;
-    config.tMax = 35;
-
     Config_InformObservers(config);
 
     if (!Analog_PollADCData(adc_data)) {

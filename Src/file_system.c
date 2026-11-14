@@ -33,15 +33,16 @@ static FRESULT FileSystem_SaveConfig(const Config *config) {
     FRESULT res = f_open(&config_file, CONFIG_FILE_NAME, FA_CREATE_ALWAYS | FA_WRITE);
 
     if (res == FR_OK) {
-        int32_t written = snprintf(buffer, BUFFER_SIZE, "%lu\n%lu\n%lu\n%.2f\n%.2f\n",
+        int32_t written = snprintf(buffer, BUFFER_SIZE, "%lu\n%lu\n%lu\n%.2f\n%.2f\n%lu\n",
                                    config->image_counter,
                                    config->heatmap_index,
                                    config->autoscale,
                                    config->tMin,
-                                   config->tMax);
+                                   config->tMax,
+                                   config->upscaling_factor);
 
         if (written > 0) {
-            res |= f_write(&config_file, buffer, strlen(buffer), &bw);
+            res |= f_write(&config_file, buffer, written, &bw);
             res |= f_close(&config_file);
         } else {
             res = FR_INT_ERR;
@@ -56,22 +57,40 @@ static FRESULT FileSystem_CreateNewConfig() {
     Config config_new;
     config_new.image_counter = 0;
     config_new.heatmap_index = 0;
+    config_new.tMin = 15;
+    config_new.tMax = 35;
+    config_new.autoscale = 0;
+    config_new.upscaling_factor = 2;
 
     return FileSystem_SaveConfig(&config_new);
 }
 
-static uint32_t read_and_convert(FIL *file, uint32_t *out_value) {
+static bool read_and_convert_u32(FIL *file, uint32_t *out_value) {
     if (f_gets(buffer, BUFFER_SIZE, file) != NULL) {
         char *endptr;
         const uint32_t value = strtoul(buffer, &endptr, 10);
 
         if (buffer != endptr) {
             *out_value = value;
-            return 1;
+            return true;
         }
     }
 
-    return 0;
+    return false;
+}
+
+static bool read_and_convert_f32(FIL *file, float *out_value) {
+    if (f_gets(buffer, BUFFER_SIZE, file) != NULL) {
+        char *endptr;
+        const float value = strtof(buffer, &endptr);
+
+        if (buffer != endptr) {
+            *out_value = value;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static FRESULT FileSystem_ReadConfig(Config *config) {
@@ -79,11 +98,27 @@ static FRESULT FileSystem_ReadConfig(Config *config) {
 
     FRESULT res = f_open(&config_file, CONFIG_FILE_NAME, FA_READ);
     if (res == FR_OK) {
-        if (!read_and_convert(&config_file, &config->image_counter)) {
+        if (!read_and_convert_u32(&config_file, &config->image_counter)) {
             res |= FR_INT_ERR;
         }
 
-        if (!read_and_convert(&config_file, &config->heatmap_index)) {
+        if (!read_and_convert_u32(&config_file, &config->heatmap_index)) {
+            res |= FR_INT_ERR;
+        }
+
+        if (!read_and_convert_u32(&config_file, &config->autoscale)) {
+            res |= FR_INT_ERR;
+        }
+
+        if (!read_and_convert_f32(&config_file, &config->tMin)) {
+            res |= FR_INT_ERR;
+        }
+
+        if (!read_and_convert_f32(&config_file, &config->tMax)) {
+            res |= FR_INT_ERR;
+        }
+
+        if (!read_and_convert_u32(&config_file, &config->upscaling_factor)) {
             res |= FR_INT_ERR;
         }
 

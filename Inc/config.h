@@ -9,6 +9,7 @@ typedef struct Config_ {
     float tMin;
     float tMax;
     uint32_t autoscale;
+    uint32_t upscaling_factor;
 } Config;
 
 typedef void (*Config_Observer)(Config new_config);
