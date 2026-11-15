@@ -1,4 +1,6 @@
 #include "W25Qxx.h"
+
+#include "dwt.h"
 #include "main.h"
 
 #define W25Q_SPI_DEFAULT_TIMEOUT_MS 2000
@@ -21,28 +23,24 @@
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
-W25Q_Status write_SPI(const W25Q *flash, const uint8_t *data, uint16_t len);
+static W25Q_Status write_SPI(const W25Q *flash, const uint8_t *data, uint32_t len);
 
-W25Q_Status read_SPI(const W25Q *flash, uint8_t *data, uint16_t len);
+static W25Q_Status read_SPI(const W25Q *flash, uint8_t *data, uint32_t len);
 
-W25Q_Status write_enable(const W25Q *flash);
+static W25Q_Status write_enable(const W25Q *flash);
 
-W25Q_Status write_disable(const W25Q *flash);
+static W25Q_Status write_disable(const W25Q *flash);
 
-uint32_t bytes_to_write(const W25Q *flash, uint32_t size, uint16_t offset);
+static void cs_LOW(const W25Q *flash);
 
-void cs_LOW(const W25Q *flash);
-
-void cs_HIGH(const W25Q *flash);
+static void cs_HIGH(const W25Q *flash);
 
 
-W25Q_Status wait_for_ready(const W25Q *flash) {
+static W25Q_Status wait_for_ready(const W25Q *flash) {
     W25Q_Status status;
     uint32_t busy;
     do {
-        for (int i = 0; i < 100; ++i) {
-            __NOP();
-        }
+        DWT_DelayUs(35);
         status = W25Q_Busy(flash, &busy);
     } while (busy && status == W25Q_OK);
     return status;
@@ -108,9 +106,13 @@ W25Q_Status W25Q_ReadJEDECIdentifier(const W25Q *flash, W25QJEDECIdentifier *out
 }
 
 W25Q_Status W25Q_Read(const W25Q *flash, const uint32_t address, const uint32_t size, uint8_t *buffer) {
+    if (size <= 0) {
+        return W25Q_INVALID_SIZE;
+    }
+
     W25Q_Status status = W25Q_OK;
 
-    if (address + size > flash->flash_size_bytes) {
+    if (address > flash->flash_size_bytes || size > flash->flash_size_bytes - address) {
         status = W25Q_INVALID_ADDRESS;
     } else {
         const uint32_t data = __REV(address) | W25Q_ENABLE_READ;
@@ -127,7 +129,7 @@ W25Q_Status W25Q_Read(const W25Q *flash, const uint32_t address, const uint32_t 
 
 W25Q_Status W25Q_WritePage(const W25Q *flash, const uint32_t page, const uint8_t *data) {
     W25Q_Status status = W25Q_OK;
- if (page >= flash->pages) {
+    if (page >= flash->pages) {
         status = W25Q_INVALID_ADDRESS;
     } else {
         const uint32_t cmd = __REV(page * flash->page_size_byte) | W25Q_PAGE_PROGRAM;
@@ -146,7 +148,9 @@ W25Q_Status W25Q_WritePage(const W25Q *flash, const uint32_t page, const uint8_t
 
 W25Q_Status W25Q_Write(const W25Q *flash, const uint32_t address, const uint8_t *data, const uint32_t size,
                        uint8_t *sector_backup) {
-    W25Q_Status status = W25Q_OK;
+    if (size <= 0) {
+        return W25Q_INVALID_SIZE;
+    }
 
     const uint32_t sector_start = address / flash->sector_size_byte;
     const uint32_t sectors_to_delete = (address + size + flash->sector_size_byte - 1) / flash->sector_size_byte -
@@ -160,7 +164,7 @@ W25Q_Status W25Q_Write(const W25Q *flash, const uint32_t address, const uint8_t 
     uint32_t bytes_remaining = size;
     uint32_t data_index = 0;
 
-
+    W25Q_Status status = W25Q_OK;
     for (uint32_t i = 0; i < sectors_to_delete; i++) {
         uint32_t need_erase = 0;
         const uint32_t cur_sector_address = (sector_start + i) * flash->sector_size_byte;
@@ -249,7 +253,7 @@ W25Q_Status W25Q_Busy(const W25Q *flash, uint32_t *is_busy) {
 W25Q_Status W25Q_EraseSector(const W25Q *flash, const uint32_t sector) {
     W25Q_Status status = W25Q_OK;
 
-    if (sector > flash->sectors) {
+    if (sector >= flash->sectors) {
         status = W25Q_INVALID_SECTOR;
     } else {
         const uint32_t address_to_delete = sector * flash->sector_size_byte;
@@ -274,11 +278,11 @@ void cs_HIGH(const W25Q *flash) {
     flash->gpio_function(GPIO_PIN_SET);
 }
 
-W25Q_Status write_SPI(const W25Q *flash, const uint8_t *data, const uint16_t len) {
+W25Q_Status write_SPI(const W25Q *flash, const uint8_t *data, const uint32_t len) {
     return flash->spi_write(data, len);
 }
 
-W25Q_Status read_SPI(const W25Q *flash, uint8_t *data, const uint16_t len) {
+W25Q_Status read_SPI(const W25Q *flash, uint8_t *data, const uint32_t len) {
     return flash->spi_read(data, len);
 }
 
@@ -307,10 +311,4 @@ W25Q_Status write_disable(const W25Q *flash) {
     return status;
 }
 
-uint32_t bytes_to_write(const W25Q *flash, const uint32_t size, const uint16_t offset) {
-    if (size + offset < flash->page_size_byte) {
-        return size;
-    }
 
-    return flash->page_size_byte - offset;
-}

@@ -57,7 +57,7 @@ static FRESULT FileSystem_CreateNewConfig() {
     Config config_new;
     config_new.image_counter = 0;
     config_new.heatmap_index = 0;
-    config_new.tMin = 15;
+    config_new.tMin = 20;
     config_new.tMax = 35;
     config_new.autoscale = 0;
     config_new.upscaling_factor = 2;

@@ -9,6 +9,7 @@
 #include "user_interface.h"
 #include "analog.h"
 #include "dsp.h"
+#include "dwt.h"
 #include "heatmap.h"
 #include "interface_callback.h"
 
@@ -67,6 +68,8 @@ void application_error_handler(void) {
 
 void Task_Init(void) {
     HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+
+    DWT_Init();
 
     Config_AddObserver(UserInterface_ConfigObserver);
     Config_AddObserver(Heatmap_ConfigObserver);

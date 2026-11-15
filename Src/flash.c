@@ -9,12 +9,12 @@ W25Q flash;
 
 extern SPI_HandleTypeDef hspi3;
 
-void W25Q_GPIO(uint32_t value) {
+static void W25Q_GPIO(uint32_t value) {
     HAL_GPIO_WritePin(FLASH_CS_GPIO_Port, FLASH_CS_Pin, value);
 }
 
 
-W25Q_Status W25Q_SPI_Write(uint8_t *data, const uint16_t len) {
+static W25Q_Status W25Q_SPI_Write(uint8_t *data, const uint32_t len) {
     if (HAL_SPI_Transmit(&hspi3, data, len, 500) == HAL_OK) {
         return W25Q_OK;
     }
@@ -22,7 +22,7 @@ W25Q_Status W25Q_SPI_Write(uint8_t *data, const uint16_t len) {
     return W25Q_SPI_COMM_ERROR;
 }
 
-W25Q_Status W25Q_SPI_Read(uint8_t *data, const uint16_t len) {
+static W25Q_Status W25Q_SPI_Read(uint8_t *data, const uint32_t len) {
     if (HAL_SPI_Receive(&hspi3, data, len, 500) == HAL_OK) {
         return W25Q_OK;
     }

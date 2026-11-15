@@ -13,11 +13,12 @@ typedef enum W25Q_Status_ {
     W25Q_SPI_COMM_ERROR = 0b100,
     W25Q_INVALID_ADDRESS = 0b1000,
     W25Q_INVALID_SECTOR = 0b10000,
+    W25Q_INVALID_SIZE = 0b100000,
 } W25Q_Status;
 
 typedef void (*GPIO_Function)(uint32_t);
 
-typedef W25Q_Status (*SPI_Function)(uint8_t *, uint16_t);
+typedef W25Q_Status (*SPI_Function)(uint8_t *, uint32_t);
 
 /**
  * Flash struct object. Holds a full description of the flash's organization such as the number of pages, sectors and blocks.
