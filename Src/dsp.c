@@ -138,8 +138,16 @@ static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
 
             // Division durch die dynamische Gesamtfläche (upscaling_factor^2)
             int32_t total_divisor = upscaling_factor * upscaling_factor;
-            int16_t dst_p = (int16_t) ((p00 * w00 + p10 * w10 + p01 * w01 + p11 * w11) / total_divisor);
+            int32_t weighted_sum = (p00 * w00) + (p10 * w10) + (p01 * w01) + (p11 * w11);
+            int32_t half_div = total_divisor >> 1;
 
+            if (weighted_sum >= 0) {
+                weighted_sum += half_div;
+            } else {
+                weighted_sum -= half_div;
+            }
+
+            int16_t dst_p = (int16_t)(weighted_sum / total_divisor);
             uint16_t color_swapped = __REV16(Heatmap_TempScaledToRGB565(dst_p).raw);
 
             for (int p = 0; p < new_pixel_size; p++) {
