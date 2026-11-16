@@ -29,8 +29,8 @@ static HeatmapFunction available_heatmaps[] = {
     &ToMagma, &ToHotWhite, &ToGray, &ToGrayInverted, &ToRed, &ToGreen, &ToRainbow
 };
 static RGB565_t color_lut[LUT_SIZE];
-static uint16_t curr_temp_min;
-static uint16_t curr_temp_max;
+static int16_t curr_temp_min;
+static int16_t curr_temp_max;
 
 // Functions
 RGB565_t Heatmap_TempScaledToRGB565(int16_t scaled_temp) {
