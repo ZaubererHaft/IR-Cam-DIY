@@ -36,7 +36,7 @@
 #include <string.h>
 
 #include "ILI9341_DMA_driver.h"
-#include "ILI9341_GFX.h"
+#include "../ILI9341_GFX.h"
 #include "5x5_font.h"
 #include "main.h"
 

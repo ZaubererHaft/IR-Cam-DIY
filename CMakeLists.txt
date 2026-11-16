@@ -68,8 +68,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user sources here
         mlx90640/functions/MLX90640_API.c
         mlx90640/functions/MLX90640_I2C_Driver.c
-        LCD_2/ILI9341_GFX.c
-        LCD_2/ILI9341_DMA_driver.c
+        LCD_2/ILI9341/ILI9341_GFX.c
+        LCD_2/ILI9341/ILI9341_DMA_driver.c
         Src/heatmap.c
         Src/usb_sync.c
 )
@@ -88,9 +88,9 @@ endif ()
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined include paths
         mlx90640/headers
-        LCD_2
-        LCD_2/fonts
-        LCD_2/bitmaps
+        LCD_2/ILI9341
+        LCD_2/ILI9341/fonts
+        LCD_2/ILI9341/bitmaps
         Src
         Inc
         w25q
