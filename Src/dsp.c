@@ -9,12 +9,6 @@
 #define offset_x  0
 #define offset_y  24
 
-// Beispiel-Definitionen für den Filter (in den Header oder global legen):
-// alpha_fx muss ein Wert zwischen 0 und 256 sein (256 = alpha von 1.0)
-// Beispiel für alpha = 0.25: (0.25 * 256) = 64
-#define ALPHA_FX       96
-#define ONE_MINUS_ALPHA (256 - ALPHA_FX)
-
 #define SRC_WIDTH   32
 #define SRC_HEIGHT  24
 
@@ -22,9 +16,13 @@
 #define MAX_DST_WIDTH        (SRC_WIDTH * MAX_UPSCALING_FACTOR)
 #define MAX_NEW_PIXEL_SIZE   8
 
-#define ALPHA_STILL       48   // ~0.19 -> starke Glättung bei ruhigem Bild
-#define ALPHA_MOTION      220  // ~0.86 -> fast sofortige Reaktion bei Bewegung
+#define ALPHA_STILL       48
+#define ALPHA_MOTION      220
 #define MOTION_THRESHOLD  10
+
+#define DIFF_MIN      7    // Bis 0,7°C Unterschied: reines Rauschen -> volle Glättung
+#define DIFF_MAX      15   // Ab 1,5°C Unterschied: echte Bewegung -> kaum Glättung
+
 
 static Config curr_config;
 
@@ -50,10 +48,12 @@ static void DSP_ApplyEMAFilter(int16_t *curr) {
 
         // select alpha value
         int32_t alpha;
-        if (diff > MOTION_THRESHOLD) {
-            alpha = ALPHA_MOTION; // motion -> no filtering
+        if (diff <= DIFF_MIN) {
+            alpha = ALPHA_STILL;
+        } else if (diff >= DIFF_MAX) {
+            alpha = ALPHA_MOTION;
         } else {
-            alpha = ALPHA_STILL; // noise -> strong smoothing
+            alpha = ALPHA_STILL + ((diff - DIFF_MIN) * (ALPHA_MOTION - ALPHA_STILL)) / (DIFF_MAX - DIFF_MIN);
         }
 
         int32_t one_minus_alpha = 256 - alpha;
