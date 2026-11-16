@@ -18,4 +18,6 @@ void UserInterface_ConfigObserver(Config config);
 
 void UserInterface_ShowDialog(const char *text);
 
+void UserInterface_StickZPressed(void);
+
 #endif //CAM_USER_INTERFACE_H

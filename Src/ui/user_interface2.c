@@ -5,11 +5,9 @@
 #include "stdbool.h"
 #include "navigation.h"
 #include "battery_state.h"
+#include "dialog.h"
 
 #include <stdlib.h>
-#include <sys/stat.h>
-
-#include "dialog.h"
 
 typedef struct AnalogData_ {
     uint16_t stick_x;
@@ -117,9 +115,6 @@ void UserInterface_ShowDialog(const char *text) {
     Navigation_NavigateToById(FRAME_DIALOG);
 }
 
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    if (GPIO_Pin == STICK_Z_Pin) {
-        stick_z_pressed = true;
-    }
+void UserInterface_StickZPressed(void) {
+    stick_z_pressed = true;
 }

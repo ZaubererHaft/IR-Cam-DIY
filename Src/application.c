@@ -203,3 +203,12 @@ void Task_ProcessAndDisplayIRData(void) {
         DSP_ProcessAndDisplay();
     }
 }
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    if (GPIO_Pin == USRBUTTON_Pin) {
+        InterfaceCallback_RequestSaveImage();
+    }
+    if (GPIO_Pin == STICK_Z_Pin) {
+        UserInterface_StickZPressed();
+    }
+}
