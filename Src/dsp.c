@@ -22,6 +22,10 @@
 #define MAX_DST_WIDTH        (SRC_WIDTH * MAX_UPSCALING_FACTOR)
 #define MAX_NEW_PIXEL_SIZE   8
 
+#define ALPHA_STILL       48   // ~0.19 -> starke Glättung bei ruhigem Bild
+#define ALPHA_MOTION      220  // ~0.86 -> fast sofortige Reaktion bei Bewegung
+#define MOTION_THRESHOLD  10
+
 static Config curr_config;
 
 static int16_t old_processed_data[SRC_WIDTH * SRC_HEIGHT];
@@ -35,10 +39,27 @@ void DSP_Init(void) {
 }
 
 static void DSP_ApplyEMAFilter(int16_t *curr) {
-    for (int i = 0; i < SRC_HEIGHT * SRC_WIDTH; i++) {
-        int32_t temp_as_int = curr[i];
-        int32_t old_temp = old_processed_data[i];
-        curr[i] = (int16_t) (((temp_as_int * ALPHA_FX) + (old_temp * ONE_MINUS_ALPHA)) >> 8);
+    for (int i = 0; i < (SRC_WIDTH * SRC_HEIGHT); i++) {
+        int32_t new_val = curr[i];
+        int32_t old_val = old_processed_data[i];
+
+        int32_t diff = new_val - old_val;
+        if (diff < 0) {
+            diff = -diff;
+        }
+
+        // select alpha value
+        int32_t alpha;
+        if (diff > MOTION_THRESHOLD) {
+            alpha = ALPHA_MOTION; // motion -> no filtering
+        } else {
+            alpha = ALPHA_STILL; // noise -> strong smoothing
+        }
+
+        int32_t one_minus_alpha = 256 - alpha;
+        int16_t filtered = (int16_t) (((new_val * alpha) + (old_val * one_minus_alpha)) >> 8);
+
+        curr[i] = filtered;
     }
 }
 
