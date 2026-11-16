@@ -14,6 +14,10 @@
 static FATFS fs;
 static char buffer[BUFFER_SIZE];
 
+static char file_buffer[1000][12];
+static uint32_t available_files = 0;
+
+typedef uint16_t (*ProcessFunction)(int16_t);
 
 static uint32_t FileSystem_FileExists(const char *file) {
     FILINFO fno;
@@ -33,7 +37,7 @@ static FRESULT FileSystem_SaveConfig(const Config *config) {
     FRESULT res = f_open(&config_file, CONFIG_FILE_NAME, FA_CREATE_ALWAYS | FA_WRITE);
 
     if (res == FR_OK) {
-        int32_t written = snprintf(buffer, BUFFER_SIZE, "%lu\n%lu\n%lu\n%.2f\n%.2f\n%lu\n",
+        int32_t written = snprintf(buffer, BUFFER_SIZE, "%u\n%lu\n%lu\n%.2f\n%.2f\n%lu\n",
                                    config->image_counter,
                                    config->heatmap_index,
                                    config->autoscale,
@@ -63,6 +67,20 @@ static FRESULT FileSystem_CreateNewConfig() {
     config_new.upscaling_factor = 2;
 
     return FileSystem_SaveConfig(&config_new);
+}
+
+static bool read_and_convert_u16(FIL *file, uint16_t *out_value) {
+    if (f_gets(buffer, BUFFER_SIZE, file) != NULL) {
+        char *endptr;
+        const uint16_t value = strtoul(buffer, &endptr, 10);
+
+        if (buffer != endptr) {
+            *out_value = value;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static bool read_and_convert_u32(FIL *file, uint32_t *out_value) {
@@ -98,7 +116,7 @@ static FRESULT FileSystem_ReadConfig(Config *config) {
 
     FRESULT res = f_open(&config_file, CONFIG_FILE_NAME, FA_READ);
     if (res == FR_OK) {
-        if (!read_and_convert_u32(&config_file, &config->image_counter)) {
+        if (!read_and_convert_u16(&config_file, &config->image_counter)) {
             res |= FR_INT_ERR;
         }
 
@@ -139,7 +157,60 @@ static FRESULT create_if_necessary_and_read(Config *out_config) {
     return res;
 }
 
-bool FileSystem_Init(uint8_t *buffer, Config *out_config) {
+static bool string_ends_with(const char *str, const char *suffix) {
+    if (!str || !suffix) return false;
+
+    size_t str_len = strlen(str);
+    size_t suffix_len = strlen(suffix);
+
+    if (suffix_len > str_len) return false;
+
+    return strcmp(str + str_len - suffix_len, suffix) == 0;
+}
+
+
+static bool do_read_files() {
+    DIR current_dir;
+    FILINFO current_file;
+
+    available_files = 0;
+
+    if (f_opendir(&current_dir, "") != FR_OK) {
+        return false;
+    }
+
+    for (;;) {
+        FRESULT fresult = f_readdir(&current_dir, &current_file);
+        if (fresult != FR_OK) {
+            break;
+        }
+
+        if (current_file.fname[0] == 0) {
+            break;
+        }
+
+        if (current_file.fname[0] == '.') {
+            continue;
+        }
+
+        if (current_file.fattrib & AM_DIR) {
+            continue;
+        }
+
+        if (string_ends_with(current_file.fname, ".bmp")) {
+            strcpy(file_buffer[available_files], current_file.fname);
+            available_files++;
+        }
+    }
+
+    if (f_closedir(&current_dir)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool FileSystem_Init(uint8_t *tmp_buffer, Config *out_config) {
     FRESULT res = f_mount(&fs, "", 1);
 
     // File system already exists -> check for config
@@ -147,7 +218,7 @@ bool FileSystem_Init(uint8_t *buffer, Config *out_config) {
         res = create_if_necessary_and_read(out_config);
     } else {
         // no file system available, try to create...
-        res = f_mkfs("0:", FM_ANY | FM_SFD, 4096, buffer, 4096);
+        res = f_mkfs("0:", FM_ANY | FM_SFD, 4096, tmp_buffer, 4096);
         if (res == FR_OK) {
             // ... and mount
             res = f_mount(&fs, "", 1);
@@ -158,22 +229,37 @@ bool FileSystem_Init(uint8_t *buffer, Config *out_config) {
         }
     }
 
-    return res == FR_OK;
+    if (res == FR_OK) {
+        do_read_files();
+        return true;
+    }
+
+    return false;
 }
+
 
 bool FileSystem_WriteConfig(const Config *config) {
     return FileSystem_SaveConfig(config) == FR_OK;
 }
 
 
-typedef uint16_t (*ProcessFunction)(int16_t);
+bool FileSystem_FindBitmaps(FileArray *out_files) {
+    if (do_read_files()) {
+        out_files->file_count = available_files;
+        out_files->file_names = file_buffer;
+        return true;
+    }
+
+    return false;
+}
+
 
 static uint16_t temp_to_color(int16_t temp) {
     return Heatmap_TempScaledToRGB565(temp).raw;
 }
 
 static uint16_t temp_identity_cast(int16_t temp) {
-    return (uint16_t)temp;
+    return (uint16_t) temp;
 }
 
 static bool f_write_blockwise(FIL *fil, uint32_t size, const int16_t *data, ProcessFunction function) {
@@ -323,7 +409,12 @@ bool FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, const ch
 
     // write data
     bool ret = f_write_blockwise(&fil, size, image_scaled, &temp_to_color);
-    return f_close(&fil) == FR_OK && ret;
+    if (ret) {
+        ret = f_close(&fil) == FR_OK;
+        available_files++;
+    }
+
+    return ret;
 }
 
 
@@ -336,3 +427,30 @@ bool FileSystem_WriteRaw(const int16_t *image_raw, uint32_t size, const char *na
     bool ret = f_write_blockwise(&fil, size, image_raw, &temp_identity_cast);
     return f_close(&fil) == FR_OK && ret;
 }
+
+bool FileSystem_DeleteBitmapAndRaw(const char *name) {
+    if (f_unlink(name) != FR_OK) {
+        return false;
+    }
+    available_files--;
+
+    char belonging_raw[12] = {'\0'};
+
+    uint32_t size = strlen(name);
+    size -= 3;
+    strncpy(belonging_raw, name, size);
+    belonging_raw[size++] = 'b';
+    belonging_raw[size++] = 'i';
+    belonging_raw[size++] = 'n';
+
+    if (f_unlink(belonging_raw) != FR_OK) {
+        return false;
+    }
+
+    return true;
+}
+
+uint32_t FileSystem_AvailableFiles(void) {
+    return available_files;
+}
+

@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 typedef struct Config_ {
-    uint32_t image_counter;
+    uint16_t image_counter;
     uint32_t heatmap_index;
     float tMin;
     float tMax;

@@ -2,11 +2,11 @@
 #include "ff.h"
 #include "ILI9341_DMA_driver.h"
 #include "ILI9341_GFX.h"
+#include "file_system.h"
+#include "navigation.h"
 
 #include <stdbool.h>
 #include <string.h>
-
-#include "navigation.h"
 
 #define MARKER_Y_TOP 0
 #define MARKER_Y_BOTTOM 1
@@ -20,37 +20,23 @@
 static uint32_t marker_index_x = MARKER_X_INDEX_NEXT;
 static uint32_t marker_index_y = MARKER_Y_BOTTOM;
 
-static uint32_t available_files = 0;
 static uint32_t curr_image_index = 0;
 
-static char files[1000][12];
-
-static bool string_ends_with(const char *str, const char *suffix) {
-    if (!str || !suffix) return false;
-
-    size_t str_len = strlen(str);
-    size_t suffix_len = strlen(suffix);
-
-    if (suffix_len > str_len) return false;
-
-    return strcmp(str + str_len - suffix_len, suffix) == 0;
-}
-
+static FileArray files;
 
 static void Gallery_ClearImage() {
-    ILI9341_Draw_Rectangle(60, 70, 32 * PREVIEW_PIXEL_SIZE + 40, 24 * PREVIEW_PIXEL_SIZE + 40, BLACK);
+    ILI9341_Draw_Rectangle(60, 70, 32 * PREVIEW_PIXEL_SIZE + 40, 24 * PREVIEW_PIXEL_SIZE + 45, BLACK);
 }
-
 
 static void Gallery_DrawCurrentImage() {
     Gallery_ClearImage();
 
-    if (available_files > 0) {
+    if (files.file_count > 0) {
         FIL fil;
         BYTE byte_buffer;
         UINT bytes_read;
 
-        FRESULT fr = f_open(&fil, files[curr_image_index], FA_READ);
+        FRESULT fr = f_open(&fil, files.file_names[curr_image_index], FA_READ);
 
         if (fr == FR_OK) {
             fr = f_lseek(&fil, 66);
@@ -89,10 +75,9 @@ static void Gallery_DrawCurrentImage() {
 
             f_close(&fil);
 
-            ILI9341_Draw_Text(files[curr_image_index], 100, 200, WHITE, 1, BLACK);
+            ILI9341_Draw_Text(files.file_names[curr_image_index], 100, 200, WHITE, 1, BLACK);
         }
-    }
-    else {
+    } else {
         ILI9341_Draw_Text("No images found", 100, 120, WHITE, 1, BLACK);
         ILI9341_Draw_Text("Why not make one?", 95, 130, WHITE, 1, BLACK);
     }
@@ -100,56 +85,24 @@ static void Gallery_DrawCurrentImage() {
 
 
 static void Gallery_ReadAllFiles() {
-    DIR current_dir;
-    FILINFO current_file;
-    FRESULT fresult = FR_OK;
-
-    available_files = 0;
-
-    fresult = f_opendir(&current_dir, "");
-
-    if (fresult == FR_OK) {
-        for (;;) {
-            fresult = f_readdir(&current_dir, &current_file);
-            if (fresult != FR_OK) {
-                break;
-            }
-
-            if (current_file.fname[0] == 0) {
-                break;
-            }
-
-            if (current_file.fname[0] == '.') {
-                continue;
-            }
-
-            if (current_file.fattrib & AM_DIR) {
-                continue;
-            }
-
-            if (string_ends_with(current_file.fname, ".bmp")) {
-                strcpy(files[available_files], current_file.fname);
-                available_files++;
-            }
-        }
-
-        f_closedir(&current_dir);
+    if (!FileSystem_FindBitmaps(&files)) {
+        Error_Handler();
     }
 }
 
 static void Gallery_DeleteCurrentImage() {
-    if (available_files > 0) {
-        FRESULT fr = f_unlink(files[curr_image_index]);
+    if (files.file_count > 0) {
+        if (FileSystem_DeleteBitmapAndRaw(files.file_names[curr_image_index])) {
+            files.file_count--;
 
-        if (fr == FR_OK) {
-            available_files--;
-
-            if (available_files > 0) {
-                curr_image_index = available_files - 1;
+            if (files.file_count > 0) {
+                curr_image_index = files.file_count - 1;
             }
 
             Gallery_ReadAllFiles();
             Gallery_DrawCurrentImage();
+        } else {
+            Error_Handler();
         }
     }
 }
@@ -186,10 +139,32 @@ void Gallery_DrawInitial() {
     Gallery_DrawCurrentImage();
 }
 
+static void Gallery_DrawNextImage() {
+    if (files.file_count > 0) {
+        curr_image_index = (curr_image_index + 1) % files.file_count;
+
+        Gallery_DrawCurrentImage();
+    }
+}
+
+static void Gallery_DrawPreviousImage() {
+    if (files.file_count > 0) {
+        if (curr_image_index <= 0) {
+            curr_image_index = files.file_count - 1;
+        } else {
+            curr_image_index = curr_image_index - 1;
+        }
+
+        Gallery_DrawCurrentImage();
+    }
+}
+
 void Gallery_StickRightMoved(void) {
     if (marker_index_x < MARKER_X_INDEX_NEXT && marker_index_y == MARKER_Y_BOTTOM) {
         marker_index_x++;
         Gallery_RedrawNavigationBar();
+    } else if (marker_index_x == MARKER_X_INDEX_NEXT && marker_index_y == MARKER_Y_BOTTOM) {
+        Gallery_DrawNextImage();
     }
 }
 
@@ -197,6 +172,8 @@ void Gallery_StickLeftMoved(void) {
     if (marker_index_x > MARKER_X_INDEX_PREV && marker_index_y == MARKER_Y_BOTTOM) {
         marker_index_x--;
         Gallery_RedrawNavigationBar();
+    } else if (marker_index_x == MARKER_X_INDEX_PREV && marker_index_y == MARKER_Y_BOTTOM) {
+        Gallery_DrawPreviousImage();
     }
 }
 
@@ -211,26 +188,15 @@ void Gallery_StickDownMoved(void) {
     Gallery_RedrawNavigationBar();
 }
 
+
 void Gallery_StickPressed(void) {
     if (marker_index_y == MARKER_Y_TOP) {
         Navigation_NavigateBack();
     } else {
         if (marker_index_x == MARKER_X_INDEX_NEXT) {
-            if (available_files > 0) {
-                curr_image_index = (curr_image_index + 1) % available_files;
-
-                Gallery_DrawCurrentImage();
-            }
+            Gallery_DrawNextImage();
         } else if (marker_index_x == MARKER_X_INDEX_PREV) {
-            if (available_files > 0) {
-                if (curr_image_index <= 0) {
-                    curr_image_index = available_files - 1;
-                } else {
-                    curr_image_index = curr_image_index - 1;
-                }
-
-                Gallery_DrawCurrentImage();
-            }
+            Gallery_DrawPreviousImage();
         } else if (marker_index_x == MARKER_X_INDEX_DEL) {
             Gallery_DeleteCurrentImage();
         }

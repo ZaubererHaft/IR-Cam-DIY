@@ -1,7 +1,6 @@
 #include "ILI9341_DMA_driver.h"
 #include "MLX90640_I2C_Driver.h"
 #include "application.h"
-
 #include "file_system.h"
 #include "flash.h"
 #include "MLX90640.h"
@@ -12,6 +11,8 @@
 #include "dwt.h"
 #include "heatmap.h"
 #include "interface_callback.h"
+#include "usb.h"
+#include "ui/dialog.h"
 
 /**
  * Prototypes
@@ -45,7 +46,7 @@ static bool save_image = false;
 static bool inform_observers = true;
 static bool synch_config = false;
 static bool menu_fresh_opened = false;
-
+static bool usb_dialog = false;
 
 void application_main(void) {
     Task_Init();
@@ -55,10 +56,23 @@ void application_main(void) {
         Task_ProcessAndDisplayIRData();
         Task_ReadAnalogData();
         Task_UserInterface();
-        Task_WriteImage();
-        Task_SynchConfig();
-        Task_BlinkyDog();
+
+        if (USB_IsConnected()) {
+            if (!usb_dialog) {
+                UserInterface_ShowDialog(" MSC USB-Mode - Please disconnect");
+                usb_dialog = true;
+            }
+        } else {
+            if (usb_dialog) {
+                Dialog_Close();
+                usb_dialog = false;
+            }
+            Task_WriteImage();
+            Task_SynchConfig();
+        }
+
         Task_InformObservers();
+        Task_BlinkyDog();
     }
 }
 
@@ -105,8 +119,6 @@ void Task_Init(void) {
         Error_Handler();
     }
 
-    //UserInterface_ShowDialog(" Welcome!");
-
     time = HAL_GetTick();
 }
 
@@ -138,25 +150,30 @@ void Task_ReadAnalogData(void) {
 
 void Task_WriteImage(void) {
     if (save_image) {
-        bool status = false;
-        char buff[32] = {0};
+        if (FileSystem_AvailableFiles() < FILESYSTEM_MAX_FILES) {
+            bool status = false;
+            char buff[32] = {0};
 
-        int32_t written = snprintf(buff, sizeof(buff), "img%lu.bmp", config.image_counter);
-        if (written > 0) {
-            status = FileSystem_WriteBitmap(MLX90640_GetIRImageScaled(), 32 * 24, buff);
-        }
+            int32_t written = snprintf(buff, sizeof(buff), "i%u.bmp", config.image_counter);
+            if (written > 0) {
+                status = FileSystem_WriteBitmap(MLX90640_GetIRImageScaled(), 32 * 24, buff);
+            }
 
-        written = snprintf(buff, sizeof(buff), "img%lu.bin", config.image_counter);
-        if (written > 0) {
-            status = FileSystem_WriteRaw(MLX90640_GetIRImageScaled(), 32 * 24, buff);
-        }
+            written = snprintf(buff, sizeof(buff), "i%u.bin", config.image_counter);
+            if (written > 0) {
+                status = FileSystem_WriteRaw(MLX90640_GetIRImageScaled(), 32 * 24, buff);
+            }
 
-        if (status) {
-            config.image_counter++;
-            synch_config = 1;
+            if (status) {
+                config.image_counter++;
+                synch_config = 1;
+            } else {
+                Error_Handler();
+            }
         } else {
-            Error_Handler();
+            UserInterface_ShowDialog(" Max files reached");
         }
+
         save_image = 0;
     }
 }
@@ -205,10 +222,12 @@ void Task_ProcessAndDisplayIRData(void) {
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    if (GPIO_Pin == USRBUTTON_Pin) {
-        InterfaceCallback_RequestSaveImage();
-    }
-    if (GPIO_Pin == STICK_Z_Pin) {
-        UserInterface_StickZPressed();
+    if (!USB_IsConnected()) {
+        if (GPIO_Pin == USRBUTTON_Pin) {
+            InterfaceCallback_RequestSaveImage();
+        }
+        if (GPIO_Pin == STICK_Z_Pin) {
+            UserInterface_StickZPressed();
+        }
     }
 }
