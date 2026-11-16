@@ -21,10 +21,12 @@ static RGB565_t ToGray(int16_t temp);
 
 static RGB565_t ToRed(int16_t temp);
 
+static RGB565_t ToRainbow(int16_t temp);
+
 // Static Variables
-static const char *heatmap_names[] = {"Magma", "HotWhite", "Gray", "Gray (i)", "Red", "Green"};
+static const char *heatmap_names[] = {"Magma", "HotWhite", "Gray", "Gray (i)", "Red", "Green", "Rainbow"};
 static HeatmapFunction available_heatmaps[] = {
-    &ToMagma, &ToHotWhite, &ToGray, &ToGrayInverted, &ToRed, &ToGreen
+    &ToMagma, &ToHotWhite, &ToGray, &ToGrayInverted, &ToRed, &ToGreen, &ToRainbow
 };
 static RGB565_t color_lut[LUT_SIZE];
 static uint16_t curr_temp_min;
@@ -188,5 +190,33 @@ RGB565_t ToMagma(int16_t temp) {
         g = 160 + ((step * 95) / 63);
         b = step * 3;
     }
+    return MakeColor565(r, g, b);
+}
+
+RGB565_t ToRainbow(int16_t temp) {
+    uint8_t val = NormalizeTemp255(temp);
+    uint8_t r, g, b;
+
+    if (val < 64) {
+        r = 0;
+        g = val * 4;
+        b = 128 + (val * 2);
+    } else if (val < 128) {
+        uint8_t step = val - 64;
+        r = 0;
+        g = 255;
+        b = 255 - (step * 4);
+    } else if (val < 192) {
+        uint8_t step = val - 128;
+        r = step * 4;
+        g = 255;
+        b = 0;
+    } else {
+        uint8_t step = val - 192;
+        r = 255;
+        g = 255 - (step * 4);
+        b = 0;
+    }
+
     return MakeColor565(r, g, b);
 }
