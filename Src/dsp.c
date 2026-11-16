@@ -24,12 +24,36 @@
 
 static Config curr_config;
 
-static int16_t old_data[SRC_WIDTH * SRC_HEIGHT];
-static int16_t current_filtered[SRC_WIDTH * SRC_HEIGHT];
+static int16_t old_processed_data[SRC_WIDTH * SRC_HEIGHT];
+static int16_t curr_working_buffer[SRC_WIDTH * SRC_HEIGHT];
+static int16_t next_working_buffer[SRC_WIDTH * SRC_HEIGHT];
+
 static uint16_t display_line_buffer[MAX_DST_WIDTH * MAX_NEW_PIXEL_SIZE];
 
 void DSP_Init(void) {
-    memset(old_data, 0xFF, sizeof(old_data));
+    memset(old_processed_data, 0xFF, sizeof(old_processed_data));
+}
+
+static void DSP_ApplyEMAFilter(int16_t *curr) {
+    for (int i = 0; i < SRC_HEIGHT * SRC_WIDTH; i++) {
+        int32_t temp_as_int = curr[i];
+        int32_t old_temp = old_processed_data[i];
+        curr[i] = (int16_t) (((temp_as_int * ALPHA_FX) + (old_temp * ONE_MINUS_ALPHA)) >> 8);
+    }
+}
+
+// sorts 5 values and returns the median (at index 2)
+static int16_t median_of_5(int16_t *window) {
+    for (int i = 1; i < 5; i++) {
+        int16_t key = window[i];
+        int j = i - 1;
+        while (j >= 0 && window[j] > key) {
+            window[j + 1] = window[j];
+            j--;
+        }
+        window[j + 1] = key;
+    }
+    return window[2];
 }
 
 static int16_t get_src_pixel(const int16_t *buffer, int32_t x, int32_t y) {
@@ -40,26 +64,27 @@ static int16_t get_src_pixel(const int16_t *buffer, int32_t x, int32_t y) {
     return buffer[y * SRC_WIDTH + x];
 }
 
+static void DSP_ApplyMedianCross5(const int16_t *src, int16_t *dst) {
+    int16_t window[5];
 
+    for (int32_t y = 0; y < SRC_HEIGHT; y++) {
+        for (int32_t x = 0; x < SRC_WIDTH; x++) {
+            window[0] = get_src_pixel(src, x, y); // middle
+            window[1] = get_src_pixel(src, x, y - 1); // top
+            window[2] = get_src_pixel(src, x, y + 1); // bottom
+            window[3] = get_src_pixel(src, x - 1, y); // left
+            window[4] = get_src_pixel(src, x + 1, y); // right
 
-// Der Upscaling-Faktor wird nun als Parameter übergeben
-void DSP_ProcessAndDisplay() {
-    int32_t upscaling_factor = curr_config.upscaling_factor;
-    int32_t dst_width = SRC_WIDTH * upscaling_factor;
-    int32_t dst_height = SRC_HEIGHT * upscaling_factor;
-    int32_t new_pixel_size = 8 / upscaling_factor;
-
-    if (new_pixel_size < 1) new_pixel_size = 1; // Sicherstellen, dass die Pixelgröße mindestens 1 ist
-
-    const int16_t *image = MLX90640_GetIRImageScaled();
-
-    // 1. EMA-Filter auf den 32x24 Rohdaten
-    for (int i = 0; i < 768; i++) {
-        int32_t temp_as_int = image[i];
-        int32_t old_temp = old_data[i];
-        current_filtered[i] = (int16_t) (((temp_as_int * ALPHA_FX) + (old_temp * ONE_MINUS_ALPHA)) >> 8);
-        old_data[i] = current_filtered[i];
+            dst[y * SRC_WIDTH + x] = median_of_5(window);
+        }
     }
+}
+
+static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
+    const int32_t upscaling_factor = (int32_t) curr_config.upscaling_factor;
+    const int32_t dst_width = SRC_WIDTH * upscaling_factor;
+    const int32_t dst_height = SRC_HEIGHT * upscaling_factor;
+    const int32_t new_pixel_size = 8 / upscaling_factor;
 
     ILI9341_Set_Address(
         offset_x,
@@ -68,7 +93,6 @@ void DSP_ProcessAndDisplay() {
         offset_y + (dst_height * new_pixel_size) - 1
     );
 
-    // 3. Bilineare Interpolation (Zeilenweise) mit variablem Faktor
     for (int32_t dst_y = 0; dst_y < dst_height; dst_y++) {
         int32_t src_y = dst_y / upscaling_factor;
         int32_t y_frac = dst_y % upscaling_factor;
@@ -80,10 +104,10 @@ void DSP_ProcessAndDisplay() {
             int32_t x_frac = dst_x % upscaling_factor;
 
             // Die 4 umgebenden Quellpixel holen
-            int32_t p00 = current_filtered[(src_y * SRC_WIDTH) + src_x];
-            int32_t p10 = get_src_pixel(current_filtered, src_x + 1, src_y);
-            int32_t p01 = get_src_pixel(current_filtered, src_x, src_y + 1);
-            int32_t p11 = get_src_pixel(current_filtered, src_x + 1, src_y + 1);
+            int32_t p00 = processed_data[(src_y * SRC_WIDTH) + src_x];
+            int32_t p10 = get_src_pixel(processed_data, src_x + 1, src_y);
+            int32_t p01 = get_src_pixel(processed_data, src_x, src_y + 1);
+            int32_t p11 = get_src_pixel(processed_data, src_x + 1, src_y + 1);
 
             // Bilineare Interpolation Gewichtung
             int32_t w00 = (upscaling_factor - x_frac) * (upscaling_factor - y_frac);
@@ -106,6 +130,20 @@ void DSP_ProcessAndDisplay() {
             ILI9341_Send_Data_Block((uint8_t *) display_line_buffer, dst_width * new_pixel_size);
         }
     }
+}
+
+
+void DSP_ProcessAndDisplay() {
+    const int16_t *image = MLX90640_GetIRImageScaled();
+    memcpy(curr_working_buffer, image, sizeof(curr_working_buffer));
+
+    DSP_ApplyMedianCross5(curr_working_buffer, next_working_buffer);
+    DSP_ApplyEMAFilter(next_working_buffer);
+
+    const int16_t *processed_data = next_working_buffer;
+    DSP_ScaleUpAndDisplay(processed_data);
+
+    memcpy(old_processed_data, processed_data, sizeof(curr_working_buffer));
 }
 
 
