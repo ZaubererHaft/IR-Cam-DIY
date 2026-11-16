@@ -106,6 +106,7 @@ static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
     const int32_t dst_width = SRC_WIDTH * upscaling_factor;
     const int32_t dst_height = SRC_HEIGHT * upscaling_factor;
     const int32_t new_pixel_size = 8 / upscaling_factor;
+    const int32_t line_pixel_count = dst_width * new_pixel_size;
 
     ILI9341_Set_Address(
         offset_x,
@@ -118,25 +119,23 @@ static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
         int32_t src_y = dst_y / upscaling_factor;
         int32_t y_frac = dst_y % upscaling_factor;
 
-        int32_t buf_idx = 0;
+        int32_t buf_idx = line_pixel_count;
 
         for (int32_t dst_x = 0; dst_x < dst_width; dst_x++) {
             int32_t src_x = dst_x / upscaling_factor;
             int32_t x_frac = dst_x % upscaling_factor;
 
-            // Die 4 umgebenden Quellpixel holen
             int32_t p00 = processed_data[(src_y * SRC_WIDTH) + src_x];
             int32_t p10 = get_src_pixel(processed_data, src_x + 1, src_y);
             int32_t p01 = get_src_pixel(processed_data, src_x, src_y + 1);
             int32_t p11 = get_src_pixel(processed_data, src_x + 1, src_y + 1);
 
-            // Bilineare Interpolation Gewichtung
             int32_t w00 = (upscaling_factor - x_frac) * (upscaling_factor - y_frac);
             int32_t w10 = x_frac * (upscaling_factor - y_frac);
             int32_t w01 = (upscaling_factor - x_frac) * y_frac;
             int32_t w11 = x_frac * y_frac;
 
-            // Division durch die dynamische Gesamtfläche (upscaling_factor^2)
+            // Division by dynamic total area (upscaling_factor^2)
             int32_t total_divisor = upscaling_factor * upscaling_factor;
             int32_t weighted_sum = (p00 * w00) + (p10 * w10) + (p01 * w01) + (p11 * w11);
             int32_t half_div = total_divisor >> 1;
@@ -151,7 +150,7 @@ static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
             uint16_t color_swapped = __REV16(Heatmap_TempScaledToRGB565(dst_p).raw);
 
             for (int p = 0; p < new_pixel_size; p++) {
-                display_line_buffer[buf_idx++] = color_swapped;
+                display_line_buffer[buf_idx--] = color_swapped;
             }
         }
 
