@@ -20,6 +20,7 @@ typedef enum MENU_ {
     MENU_MAX,
     MENU_UPSCALING,
     MENU_AUTOSCALE,
+    MENU_SETTINGS_ADVANCED,
     MENU_SAVE,
     MENU_BACK
 } MENU;
@@ -27,8 +28,8 @@ typedef enum MENU_ {
 static void DrawMenuLine(const char *text, uint16_t x, uint16_t *y, uint16_t line) {
     *y += 16;
 
-    uint16_t color_foreground = WHITE;
-    uint16_t color_background = BLACK;
+    uint16_t color_foreground;
+    uint16_t color_background;
 
     if (menu_cursor_Y == line) {
         color_foreground = BLACK;
@@ -65,6 +66,7 @@ static void Settings_Redraw(void) {
     snprintf(buffer, sizeof(buffer), " Autoscale: %lu", requested_config.autoscale);
     DrawMenuLine(buffer, x, &y, MENU_AUTOSCALE);
 
+    DrawMenuLine(" Advanced Settings", x, &y, MENU_SETTINGS_ADVANCED);
     DrawMenuLine(" Save ", x, &y, MENU_SAVE);
     DrawMenuLine(" Back ", x, &y, MENU_BACK);
 }
@@ -149,6 +151,9 @@ void Settings_StickPressed(void) {
         Navigation_NavigateBack();
     } else if (menu_cursor_Y == MENU_BACK) {
         Navigation_NavigateBack();
+    }
+    else if (menu_cursor_Y == MENU_SETTINGS_ADVANCED) {
+        Navigation_NavigateToById(FRAME_SETTINGS_ADVANCED);
     }
 }
 

@@ -8,12 +8,14 @@
 
 #include "dialog.h"
 #include "settings.h"
+#include "settings_advanced.h"
 
 static UIFrame default_frame;
 static UIFrame gallery_frame;
 static UIFrame menu_frame;
 static UIFrame settings_frame;
 static UIFrame dialog_frame;
+static UIFrame settings_advanced_frame;
 
 static int32_t stack_ptr = -1;
 static UIFrame *nav_stack[5];
@@ -31,6 +33,10 @@ static UIFrame *Navigation_FrameById(UIFrameIdentifier frame) {
     if (frame == FRAME_DIALOG) {
         return &dialog_frame;
     }
+    if (frame == FRAME_SETTINGS_ADVANCED) {
+        return &settings_advanced_frame;
+    }
+
     return &default_frame;
 }
 
@@ -64,6 +70,14 @@ void Navigation_InitById(UIFrameIdentifier frame_initial) {
     dialog_frame.id = FRAME_DIALOG;
     dialog_frame.init_function = Dialog_DrawInitial;
     dialog_frame.stick_pressed_callback = Dialog_StickPressed;
+
+    settings_advanced_frame.id = FRAME_SETTINGS_ADVANCED;
+    settings_advanced_frame.init_function = SettingsAdvanced_DrawInitial;
+    settings_advanced_frame.stick_pressed_callback = SettingsAdvanced_StickPressed;
+    settings_advanced_frame.stick_left_callback = SettingsAdvanced_StickMovedLeft;
+    settings_advanced_frame.stick_right_callback = SettingsAdvanced_StickMovedRight;
+    settings_advanced_frame.stick_up_callback = SettingsAdvanced_StickMovedUp;
+    settings_advanced_frame.stick_down_callback = SettingsAdvanced_StickMovedDown;
 
     Navigation_NavigateToById(frame_initial);
 }

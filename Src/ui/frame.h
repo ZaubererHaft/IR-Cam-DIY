@@ -7,7 +7,8 @@ typedef enum UIFrameIdentifier_ {
     FRAME_MENU_OVERVIEW,
     FRAME_GALLERY,
     FRAME_SETTINGS,
-    FRAME_DIALOG
+    FRAME_DIALOG,
+    FRAME_SETTINGS_ADVANCED
 } UIFrameIdentifier;
 
 typedef struct UIFrame_ {
