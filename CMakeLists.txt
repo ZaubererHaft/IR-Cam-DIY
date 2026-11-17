@@ -47,12 +47,11 @@ add_executable(${CMAKE_PROJECT_NAME}
         Src/ui/navigation.c
         Src/ui/frame.c
         Src/ui/settings.c
-        Src/ui/settings.h
         Src/ui/dialog.c
-        Src/ui/dialog.h
         Src/dsp.c
         Src/dwt.c
         Src/usb.c
+        Src/ui/settings_advanced.c
 )
 
 set_source_files_properties(
