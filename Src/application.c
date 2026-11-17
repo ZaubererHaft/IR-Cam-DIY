@@ -150,28 +150,24 @@ void Task_ReadAnalogData(void) {
 
 void Task_WriteImage(void) {
     if (save_image) {
-        if (FileSystem_AvailableFiles() < FILESYSTEM_MAX_FILES) {
-            bool status = false;
-            char buff[32] = {0};
+        bool status = false;
+        char buff[32] = {0};
 
-            int32_t written = snprintf(buff, sizeof(buff), "i%u.bmp", config.image_counter);
-            if (written > 0) {
-                status = FileSystem_WriteBitmap(MLX90640_GetIRImageScaled(), 32 * 24, buff);
-            }
+        int32_t written = snprintf(buff, sizeof(buff), "i%u.bmp", config.image_counter);
+        if (written > 0) {
+            status = FileSystem_WriteBitmap(MLX90640_GetIRImageScaled(), 32 * 24, buff);
+        }
 
-            written = snprintf(buff, sizeof(buff), "i%u.bin", config.image_counter);
-            if (written > 0) {
-                status = FileSystem_WriteRaw(MLX90640_GetIRImageScaled(), 32 * 24, buff);
-            }
+        written = snprintf(buff, sizeof(buff), "i%u.bin", config.image_counter);
+        if (written > 0) {
+            status = FileSystem_WriteRaw(MLX90640_GetIRImageScaled(), 32 * 24, buff);
+        }
 
-            if (status) {
-                config.image_counter++;
-                synch_config = 1;
-            } else {
-                Error_Handler();
-            }
+        if (status) {
+            config.image_counter++;
+            synch_config = 1;
         } else {
-            UserInterface_ShowDialog(" Max files reached");
+            Error_Handler();
         }
 
         save_image = 0;

@@ -20,9 +20,7 @@
 static uint32_t marker_index_x = MARKER_X_INDEX_NEXT;
 static uint32_t marker_index_y = MARKER_Y_BOTTOM;
 
-static uint32_t curr_image_index = 0;
-
-static FileArray files;
+static char *curr_file_name = NULL;
 
 static void Gallery_ClearImage() {
     ILI9341_Draw_Rectangle(60, 70, 32 * PREVIEW_PIXEL_SIZE + 40, 24 * PREVIEW_PIXEL_SIZE + 45, BLACK);
@@ -31,12 +29,12 @@ static void Gallery_ClearImage() {
 static void Gallery_DrawCurrentImage() {
     Gallery_ClearImage();
 
-    if (files.file_count > 0) {
+    if (FileSystem_AvailableFiles() > 0) {
         FIL fil;
         BYTE byte_buffer;
         UINT bytes_read;
 
-        FRESULT fr = f_open(&fil, files.file_names[curr_image_index], FA_READ);
+        FRESULT fr = f_open(&fil, curr_file_name, FA_READ);
 
         if (fr == FR_OK) {
             fr = f_lseek(&fil, 66);
@@ -75,7 +73,7 @@ static void Gallery_DrawCurrentImage() {
 
             f_close(&fil);
 
-            ILI9341_Draw_Text(files.file_names[curr_image_index], 100, 200, WHITE, 1, BLACK);
+            ILI9341_Draw_Text(curr_file_name, 100, 200, WHITE, 1, BLACK);
         }
     } else {
         ILI9341_Draw_Text("No images found", 100, 120, WHITE, 1, BLACK);
@@ -84,22 +82,13 @@ static void Gallery_DrawCurrentImage() {
 }
 
 
-static void Gallery_ReadAllFiles() {
-    if (!FileSystem_FindBitmaps(&files)) {
-        Error_Handler();
-    }
-}
-
 static void Gallery_DeleteCurrentImage() {
-    if (files.file_count > 0) {
-        if (FileSystem_DeleteBitmapAndRaw(files.file_names[curr_image_index])) {
-            files.file_count--;
-
-            if (files.file_count > 0) {
-                curr_image_index = files.file_count - 1;
+    if (FileSystem_AvailableFiles() > 0) {
+        if (FileSystem_DeleteBitmapAndRaw(curr_file_name)) {
+            if (FileSystem_AvailableFiles() > 0) {
+                curr_file_name = FileSystem_NextBitmap();
             }
 
-            Gallery_ReadAllFiles();
             Gallery_DrawCurrentImage();
         } else {
             Error_Handler();
@@ -134,27 +123,24 @@ void Gallery_DrawInitial() {
     ILI9341_Draw_Rectangle(00, 20, 260, 210, BLACK);
     ILI9341_Draw_Text("Gallery", 80, 40, ORANGE, 2, BLACK);
 
-    Gallery_ReadAllFiles();
+    if (curr_file_name == NULL) {
+        curr_file_name = FileSystem_NextBitmap();
+    }
+
     Gallery_RedrawNavigationBar();
     Gallery_DrawCurrentImage();
 }
 
 static void Gallery_DrawNextImage() {
-    if (files.file_count > 0) {
-        curr_image_index = (curr_image_index + 1) % files.file_count;
-
+    if (FileSystem_AvailableFiles() > 0) {
+        curr_file_name = FileSystem_NextBitmap();
         Gallery_DrawCurrentImage();
     }
 }
 
 static void Gallery_DrawPreviousImage() {
-    if (files.file_count > 0) {
-        if (curr_image_index <= 0) {
-            curr_image_index = files.file_count - 1;
-        } else {
-            curr_image_index = curr_image_index - 1;
-        }
-
+    if (FileSystem_AvailableFiles() > 0) {
+        curr_file_name = FileSystem_PreviousBitmap();
         Gallery_DrawCurrentImage();
     }
 }

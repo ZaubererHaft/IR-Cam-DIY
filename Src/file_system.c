@@ -14,8 +14,13 @@
 static FATFS fs;
 static char buffer[BUFFER_SIZE];
 
-static char file_buffer[1000][12];
-static uint32_t available_files = 0;
+static uint32_t available_bmps = 0;
+
+static char first_bmp[32] = {0};
+static char prev_bmp[32] = {0};
+static char curr_bitmap[32] = {0};
+static char next_bmp[32] = {0};
+static char last_bmp[32] = {0};
 
 typedef uint16_t (*ProcessFunction)(int16_t);
 
@@ -64,7 +69,7 @@ static FRESULT FileSystem_CreateNewConfig() {
     config_new.tMin = 20;
     config_new.tMax = 35;
     config_new.autoscale = 0;
-    config_new.upscaling_factor = 2;
+    config_new.upscaling_factor = 4;
 
     return FileSystem_SaveConfig(&config_new);
 }
@@ -169,15 +174,19 @@ static bool string_ends_with(const char *str, const char *suffix) {
 }
 
 
-static bool do_read_files() {
+static bool rebuild_curr_bmp_window() {
     DIR current_dir;
     FILINFO current_file;
-
-    available_files = 0;
 
     if (f_opendir(&current_dir, "") != FR_OK) {
         return false;
     }
+
+    bool first = true;
+    bool skipper = false;
+    bool window_built = false;
+
+    available_bmps = 0;
 
     for (;;) {
         FRESULT fresult = f_readdir(&current_dir, &current_file);
@@ -198,8 +207,30 @@ static bool do_read_files() {
         }
 
         if (string_ends_with(current_file.fname, ".bmp")) {
-            strcpy(file_buffer[available_files], current_file.fname);
-            available_files++;
+            available_bmps++;
+
+            if (first) {
+                strcpy(first_bmp, current_file.fname);
+                first = false;
+            }
+
+            if (!window_built) {
+                // "middle" file -> next file will be next file
+                if (strlen(curr_bitmap) <= 0 || strcmp(curr_bitmap, current_file.fname) == 0) {
+                    skipper = true;
+                } else {
+                    if (skipper) {
+                        // next has been set, window found
+                        strcpy(next_bmp, current_file.fname);
+                        window_built = true;
+                    } else {
+                        // middle was not yet found, this is previous
+                        strcpy(prev_bmp, current_file.fname);
+                    }
+                }
+            }
+
+            strcpy(last_bmp, current_file.fname);
         }
     }
 
@@ -230,7 +261,7 @@ bool FileSystem_Init(uint8_t *tmp_buffer, Config *out_config) {
     }
 
     if (res == FR_OK) {
-        do_read_files();
+        rebuild_curr_bmp_window();
         return true;
     }
 
@@ -243,14 +274,28 @@ bool FileSystem_WriteConfig(const Config *config) {
 }
 
 
-bool FileSystem_FindBitmaps(FileArray *out_files) {
-    if (do_read_files()) {
-        out_files->file_count = available_files;
-        out_files->file_names = file_buffer;
-        return true;
+char *FileSystem_NextBitmap(void) {
+    if (rebuild_curr_bmp_window()) {
+        if (strlen(next_bmp) <= 0 || strcmp(next_bmp, curr_bitmap) == 0) {
+            strcpy(curr_bitmap, first_bmp);
+        } else {
+            strcpy(curr_bitmap, next_bmp);
+        }
+        return curr_bitmap;
     }
+    return NULL;
+}
 
-    return false;
+char *FileSystem_PreviousBitmap(void) {
+    if (rebuild_curr_bmp_window()) {
+        if (strlen(prev_bmp) <= 0 || strcmp(prev_bmp, curr_bitmap) == 0) {
+            strcpy(curr_bitmap, last_bmp);
+        } else {
+            strcpy(curr_bitmap, prev_bmp);
+        }
+        return curr_bitmap;
+    }
+    return NULL;
 }
 
 
@@ -289,7 +334,6 @@ static bool f_write_blockwise(FIL *fil, uint32_t size, const int16_t *data, Proc
 
     return true;
 }
-
 
 
 bool FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, const char *name) {
@@ -409,10 +453,8 @@ bool FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, const ch
 
     // write data
     bool ret = f_write_blockwise(&fil, size, image_scaled, &temp_to_color);
-    if (ret) {
-        ret = f_close(&fil) == FR_OK;
-        available_files++;
-    }
+    ret |= f_close(&fil) == FR_OK;
+    ret |= rebuild_curr_bmp_window();
 
     return ret;
 }
@@ -425,14 +467,16 @@ bool FileSystem_WriteRaw(const int16_t *image_raw, uint32_t size, const char *na
         return false;
     }
     bool ret = f_write_blockwise(&fil, size, image_raw, &temp_identity_cast);
-    return f_close(&fil) == FR_OK && ret;
+    ret |= f_close(&fil) == FR_OK;
+    ret |= rebuild_curr_bmp_window();
+
+    return ret;
 }
 
 bool FileSystem_DeleteBitmapAndRaw(const char *name) {
     if (f_unlink(name) != FR_OK) {
         return false;
     }
-    available_files--;
 
     char belonging_raw[12] = {'\0'};
 
@@ -447,10 +491,9 @@ bool FileSystem_DeleteBitmapAndRaw(const char *name) {
         return false;
     }
 
-    return true;
+    return rebuild_curr_bmp_window();
 }
 
 uint32_t FileSystem_AvailableFiles(void) {
-    return available_files;
+    return available_bmps;
 }
-
