@@ -27,16 +27,15 @@
 static Config curr_config;
 
 static int16_t old_processed_data[SRC_WIDTH * SRC_HEIGHT];
-static int16_t curr_working_buffer[SRC_WIDTH * SRC_HEIGHT];
 static int16_t next_working_buffer[SRC_WIDTH * SRC_HEIGHT];
 
 static uint16_t display_line_buffer[MAX_DST_WIDTH * MAX_NEW_PIXEL_SIZE];
 
 void DSP_Init(void) {
-    memset(old_processed_data, 0xFF, sizeof(old_processed_data));
+    memset(old_processed_data, 20, sizeof(old_processed_data));
 }
 
-static void DSP_ApplyEMAFilter(int16_t *curr) {
+static void DSP_ApplyEMAFilterAndCopyToOld(int16_t *curr) {
     for (int i = 0; i < (SRC_WIDTH * SRC_HEIGHT); i++) {
         int32_t new_val = curr[i];
         int32_t old_val = old_processed_data[i];
@@ -60,6 +59,7 @@ static void DSP_ApplyEMAFilter(int16_t *curr) {
         int16_t filtered = (int16_t) (((new_val * alpha) + (old_val * one_minus_alpha)) >> 8);
 
         curr[i] = filtered;
+        old_processed_data[i] = filtered; //, processed_data, sizeof(curr_working_buffer));
     }
 }
 
@@ -119,7 +119,7 @@ static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
         int32_t src_y = dst_y / upscaling_factor;
         int32_t y_frac = dst_y % upscaling_factor;
 
-        int32_t buf_idx = line_pixel_count;
+        int32_t buf_idx = line_pixel_count - 1;
 
         for (int32_t dst_x = 0; dst_x < dst_width; dst_x++) {
             int32_t src_x = dst_x / upscaling_factor;
@@ -163,15 +163,13 @@ static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
 
 void DSP_ProcessAndDisplay() {
     const int16_t *image = MLX90640_GetIRImageScaled();
-    memcpy(curr_working_buffer, image, sizeof(curr_working_buffer));
 
-    DSP_ApplyMedianCross5(curr_working_buffer, next_working_buffer);
-    DSP_ApplyEMAFilter(next_working_buffer);
+    DSP_ApplyMedianCross5(image, next_working_buffer);
+    DSP_ApplyEMAFilterAndCopyToOld(next_working_buffer);
 
     const int16_t *processed_data = next_working_buffer;
     DSP_ScaleUpAndDisplay(processed_data);
 
-    memcpy(old_processed_data, processed_data, sizeof(curr_working_buffer));
 }
 
 
