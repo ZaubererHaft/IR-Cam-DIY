@@ -55,6 +55,11 @@ add_executable(${CMAKE_PROJECT_NAME}
         Src/usb.c
 )
 
+set_source_files_properties(
+        Src/dsp.c
+        PROPERTIES COMPILE_OPTIONS "-O3"
+)
+
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
