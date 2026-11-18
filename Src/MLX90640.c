@@ -53,7 +53,7 @@ int32_t MLX90640_Restart(void) {
     return MLX90640_GetFrameDataAsync(MLX90640_ADDR, rx_buff);
 }
 
-int32_t MLX90640_ReadTemperature(uint32_t request_next) {
+int32_t MLX90640_ReadTemperature(bool request_next) {
     int32_t status = 0;
 
     if (new_ir_data_available) {

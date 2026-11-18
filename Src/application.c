@@ -125,13 +125,13 @@ void Task_Init(void) {
 void Task_ReadIRData(void) {
     if (UserInterface_ShowingAnyMenuOrDialog()) {
         menu_fresh_opened = true;
-        MLX90640_ReadTemperature(0);
+        MLX90640_ReadTemperature(false);
     } else {
         if (menu_fresh_opened) {
             // menu closed -> restart
             MLX90640_Restart();
         } else {
-            MLX90640_ReadTemperature(1);
+            MLX90640_ReadTemperature(true);
         }
         menu_fresh_opened = false;
     }
