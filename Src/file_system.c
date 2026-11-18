@@ -7,6 +7,7 @@
 #include "dsp.h"
 #include "ff.h"
 #include "heatmap.h"
+#include "ui_constants.h"
 
 
 #define CONFIG_FILE_NAME "config.txt"
@@ -308,7 +309,7 @@ static uint16_t temp_identity(uint16_t temp) {
 }
 
 static bool f_write_blockwise(FIL *fil, uint32_t size, const uint16_t *data, ProcessFunction function) {
-    uint32_t values_left = size;
+    uint32_t values_left = size / 2;
     uint32_t buff_size_in_values = BUFFER_SIZE / 2;
     uint32_t value_pos = 0;
 
@@ -348,8 +349,8 @@ bool FileSystem_WriteImageAsBitmap(const char *name) {
     buffer[0] = 'B';
     buffer[1] = 'M';
 
-    uint32_t upscaled_width = 256;
-    uint32_t upscaled_height = 192;
+    uint32_t upscaled_width = IR_IMAGE_UPSCALED_WIDTH;
+    uint32_t upscaled_height = IR_IMAGE_UPSCALED_HEIGHT;
 
     uint32_t file_size = 66 + 2 * upscaled_width * upscaled_height;
 
