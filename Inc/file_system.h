@@ -13,9 +13,11 @@ bool FileSystem_WriteRaw(const int16_t *image_raw, uint32_t size, const char *na
 
 bool FileSystem_WriteConfig(const Config *config);
 
-char *FileSystem_NextBitmap(void);
+char *FileSystem_CurrentBitmap(void);
 
-char *FileSystem_PreviousBitmap(void);
+char *FileSystem_StepToNextBitmap(void);
+
+char *FileSystem_StepToPreviousBitmap(void);
 
 bool FileSystem_DeleteBitmapAndRaw(const char *name);
 

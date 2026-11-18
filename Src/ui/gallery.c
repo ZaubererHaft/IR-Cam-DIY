@@ -23,7 +23,7 @@ static char *curr_file_name = NULL;
 static uint16_t line_buffer[256];
 
 static void Gallery_ClearImage() {
-    ILI9341_Draw_Rectangle(IR_IMAGE_BEGIN_X, IR_IMAGE_BEGIN_X, 32 * 4 + 40, 24 * 4 + 45, BLACK);
+    ILI9341_Draw_Rectangle(IR_IMAGE_BEGIN_X, IR_IMAGE_BEGIN_Y, 256, 192, BLACK);
 }
 
 static void Draw_Element(const char *text, uint32_t y_pos, uint32_t x_pos, uint32_t index_y, uint32_t index_x) {
@@ -101,7 +101,9 @@ static void Gallery_DeleteCurrentImage() {
     if (FileSystem_AvailableFiles() > 0) {
         if (FileSystem_DeleteBitmapAndRaw(curr_file_name)) {
             if (FileSystem_AvailableFiles() > 0) {
-                curr_file_name = FileSystem_NextBitmap();
+                curr_file_name = FileSystem_StepToNextBitmap();
+            } else {
+                curr_file_name = NULL;
             }
 
             Gallery_DrawCurrentImage();
@@ -116,7 +118,7 @@ void Gallery_DrawInitial() {
     ILI9341_Draw_Text("Gallery", 80, 40, ORANGE, 2, BLACK);
 
     if (curr_file_name == NULL) {
-        curr_file_name = FileSystem_NextBitmap();
+        curr_file_name = FileSystem_CurrentBitmap();
     }
 
     Gallery_RedrawNavigationBar();
@@ -125,14 +127,14 @@ void Gallery_DrawInitial() {
 
 static void Gallery_DrawNextImage() {
     if (FileSystem_AvailableFiles() > 0) {
-        curr_file_name = FileSystem_NextBitmap();
+        curr_file_name = FileSystem_StepToNextBitmap();
         Gallery_DrawCurrentImage();
     }
 }
 
 static void Gallery_DrawPreviousImage() {
     if (FileSystem_AvailableFiles() > 0) {
-        curr_file_name = FileSystem_PreviousBitmap();
+        curr_file_name = FileSystem_StepToPreviousBitmap();
         Gallery_DrawCurrentImage();
     }
 }

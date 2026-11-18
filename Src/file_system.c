@@ -176,68 +176,96 @@ static bool string_ends_with(const char *str, const char *suffix) {
 }
 
 
-static bool rebuild_curr_bmp_window() {
-    DIR current_dir;
-    FILINFO current_file;
+static bool rebuild_curr_bmp_window(void) {
+    DIR dir;
+    FILINFO fno;
 
-    if (f_opendir(&current_dir, "") != FR_OK) {
+    if (f_opendir(&dir, "") != FR_OK) {
         return false;
     }
 
-    bool first = true;
-    bool skipper = false;
-    bool window_built = false;
+    char first_found[sizeof(curr_bitmap)] = {0};
+    char last_found[sizeof(curr_bitmap)]  = {0};
 
+    prev_bmp[0] = '\0';
+    next_bmp[0] = '\0';
     available_bmps = 0;
 
+    bool curr_found = false;
+    bool next_found = false;
+
     for (;;) {
-        FRESULT fresult = f_readdir(&current_dir, &current_file);
-        if (fresult != FR_OK) {
+        FRESULT res = f_readdir(&dir, &fno);
+        if (res != FR_OK) {
+            f_closedir(&dir);
+            return false;
+        }
+
+        // End of folder
+        if (fno.fname[0] == '\0') {
             break;
         }
 
-        if (current_file.fname[0] == 0) {
-            break;
-        }
-
-        if (current_file.fname[0] == '.') {
+        if (fno.fname[0] == '.' || (fno.fattrib & AM_DIR)) {
             continue;
         }
 
-        if (current_file.fattrib & AM_DIR) {
+        if (!string_ends_with(fno.fname, ".bmp")) {
             continue;
         }
 
-        if (string_ends_with(current_file.fname, ".bmp")) {
-            available_bmps++;
+        available_bmps++;
 
-            if (first) {
-                strcpy(first_bmp, current_file.fname);
-                first = false;
+        if (available_bmps == 1) {
+            snprintf(first_found, sizeof(first_found), "%s", fno.fname);
+        }
+
+        snprintf(last_found, sizeof(last_found), "%s", fno.fname);
+
+        // Search prev and next
+        if (!curr_found) {
+            if (strcmp(curr_bitmap, fno.fname) == 0) {
+                curr_found = true;
+            } else {
+                snprintf(prev_bmp, sizeof(prev_bmp), "%s", fno.fname);
             }
-
-            if (!window_built) {
-                // "middle" file -> next file will be next file
-                if (strlen(curr_bitmap) <= 0 || strcmp(curr_bitmap, current_file.fname) == 0) {
-                    skipper = true;
-                } else {
-                    if (skipper) {
-                        // next has been set, window found
-                        strcpy(next_bmp, current_file.fname);
-                        window_built = true;
-                    } else {
-                        // middle was not yet found, this is previous
-                        strcpy(prev_bmp, current_file.fname);
-                    }
-                }
-            }
-
-            strcpy(last_bmp, current_file.fname);
+        } else if (!next_found) {
+            snprintf(next_bmp, sizeof(next_bmp), "%s", fno.fname);
+            next_found = true;
         }
     }
 
-    if (f_closedir(&current_dir)) {
+    if (f_closedir(&dir) != FR_OK) {
         return false;
+    }
+
+    // Case A: No bitmaps at all
+    if (available_bmps == 0) {
+        curr_bitmap[0] = '\0';
+        prev_bmp[0]    = '\0';
+        next_bmp[0]    = '\0';
+        return true;
+    }
+
+    // Fall B: curr_bitmap not found
+    if (!curr_found) {
+        // Fallback to very first files
+        snprintf(curr_bitmap, sizeof(curr_bitmap), "%s", first_found);
+        prev_bmp[0] = '\0';
+
+        if (available_bmps > 1) {
+            return rebuild_curr_bmp_window();
+        }
+    }
+
+    // Wrap-Around  PREVIOUS
+    if (prev_bmp[0] == '\0') {
+        snprintf(prev_bmp, sizeof(prev_bmp), "%s", last_found);
+    }
+
+    // Wrap-Around  NEXT
+    if (next_bmp[0] == '\0') {
+        snprintf(next_bmp, sizeof(next_bmp), "%s", first_found);
     }
 
     return true;
@@ -275,26 +303,37 @@ bool FileSystem_WriteConfig(const Config *config) {
     return FileSystem_SaveConfig(config) == FR_OK;
 }
 
+char *FileSystem_CurrentBitmap(void) {
+    curr_bitmap[0] = '\0';
 
-char *FileSystem_NextBitmap(void) {
     if (rebuild_curr_bmp_window()) {
-        if (strlen(next_bmp) <= 0 || strcmp(next_bmp, curr_bitmap) == 0) {
-            strcpy(curr_bitmap, first_bmp);
-        } else {
-            strcpy(curr_bitmap, next_bmp);
-        }
         return curr_bitmap;
     }
     return NULL;
 }
 
-char *FileSystem_PreviousBitmap(void) {
+
+char *FileSystem_StepToNextBitmap(void) {
+    if (strlen(next_bmp) <= 0 || strcmp(next_bmp, curr_bitmap) == 0) {
+        strcpy(curr_bitmap, first_bmp);
+    } else {
+        strcpy(curr_bitmap, next_bmp);
+    }
+
     if (rebuild_curr_bmp_window()) {
-        if (strlen(prev_bmp) <= 0 || strcmp(prev_bmp, curr_bitmap) == 0) {
-            strcpy(curr_bitmap, last_bmp);
-        } else {
-            strcpy(curr_bitmap, prev_bmp);
-        }
+        return curr_bitmap;
+    }
+    return NULL;
+}
+
+char *FileSystem_StepToPreviousBitmap(void) {
+    if (strlen(prev_bmp) <= 0 || strcmp(prev_bmp, curr_bitmap) == 0) {
+        strcpy(curr_bitmap, last_bmp);
+    } else {
+        strcpy(curr_bitmap, prev_bmp);
+    }
+
+    if (rebuild_curr_bmp_window()) {
         return curr_bitmap;
     }
     return NULL;
@@ -506,6 +545,14 @@ bool FileSystem_DeleteBitmapAndRaw(const char *name) {
 
     if (f_unlink(belonging_raw) != FR_OK) {
         return false;
+    }
+
+    if (strlen(next_bmp) > 0) {
+        strcpy(curr_bitmap, next_bmp);
+    } else if (strlen(prev_bmp) > 0) {
+        strcpy(curr_bitmap, prev_bmp);
+    } else {
+        memset(curr_bitmap, 0, sizeof(curr_bitmap));
     }
 
     return rebuild_curr_bmp_window();
