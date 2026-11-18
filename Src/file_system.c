@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "dsp.h"
 #include "ff.h"
 #include "heatmap.h"
 
@@ -22,7 +23,7 @@ static char curr_bitmap[32] = {0};
 static char next_bmp[32] = {0};
 static char last_bmp[32] = {0};
 
-typedef uint16_t (*ProcessFunction)(int16_t);
+typedef uint16_t (*ProcessFunction)(uint16_t);
 
 static uint32_t FileSystem_FileExists(const char *file) {
     FILINFO fno;
@@ -298,16 +299,15 @@ char *FileSystem_PreviousBitmap(void) {
     return NULL;
 }
 
-
-static uint16_t temp_to_color(int16_t temp) {
-    return Heatmap_TempScaledToRGB565(temp).raw;
+static uint16_t temp_rev16(uint16_t temp) {
+    return __REV16(temp);
 }
 
-static uint16_t temp_identity_cast(int16_t temp) {
-    return (uint16_t) temp;
+static uint16_t temp_identity(uint16_t temp) {
+    return temp;
 }
 
-static bool f_write_blockwise(FIL *fil, uint32_t size, const int16_t *data, ProcessFunction function) {
+static bool f_write_blockwise(FIL *fil, uint32_t size, const uint16_t *data, ProcessFunction function) {
     uint32_t values_left = size;
     uint32_t buff_size_in_values = BUFFER_SIZE / 2;
     uint32_t value_pos = 0;
@@ -335,20 +335,35 @@ static bool f_write_blockwise(FIL *fil, uint32_t size, const int16_t *data, Proc
     return true;
 }
 
+static FIL open_bitmap;
 
-bool FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, const char *name) {
+static void write_partial(uint16_t *line_buff, uint32_t size) {
+    bool ret = f_write_blockwise(&open_bitmap, size, line_buff, temp_rev16);
+    if (!ret) {
+        Error_Handler();
+    }
+}
+
+bool FileSystem_WriteImageAsBitmap(const char *name) {
     buffer[0] = 'B';
     buffer[1] = 'M';
 
-    //file size
-    buffer[2] = (size & 0x00FF) >> 0;
-    buffer[3] = (size & 0xFF00) >> 8;
-    buffer[4] = 0;
-    buffer[5] = 0;
+    uint32_t upscaled_width = 256;
+    uint32_t upscaled_height = 192;
 
-    // reserved
+    uint32_t file_size = 66 + 2 * upscaled_width * upscaled_height;
+
+    //file size
+    buffer[2] = (file_size & 0x000000FF) >> 0;
+    buffer[3] = (file_size & 0x0000FF00) >> 8;
+    buffer[4] = (file_size & 0x00FF0000) >> 16;
+    buffer[5] = (file_size & 0xFF000000) >> 24;
+
+    // reserved1
     buffer[6] = 0;
     buffer[7] = 0;
+
+    // reserved2
     buffer[8] = 0;
     buffer[9] = 0;
 
@@ -365,17 +380,19 @@ bool FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, const ch
     buffer[16] = 0;
     buffer[17] = 0;
 
+    const int32_t width = (int32_t) upscaled_width;
     // horizontal width
-    buffer[18] = 32;
-    buffer[19] = 0;
-    buffer[20] = 0;
-    buffer[21] = 0;
+    buffer[18] = (width & 0x000000FF) >> 0;
+    buffer[19] = (width & 0x0000FF00) >> 8;
+    buffer[20] = (width & 0x00FF0000) >> 16;
+    buffer[21] = (width & 0xFF000000) >> 24;
 
+    const int32_t height = -1 * (int32_t) upscaled_height;
     // vertical height
-    buffer[22] = 0xE8;
-    buffer[23] = 0xFF;
-    buffer[24] = 0xFF;
-    buffer[25] = 0xFF;
+    buffer[22] = (height & 0x000000FF) >> 0;
+    buffer[23] = (height & 0x0000FF00) >> 8;
+    buffer[24] = (height & 0x00FF0000) >> 16;
+    buffer[25] = (height & 0xFF000000) >> 24;
 
     // 1 plane
     buffer[26] = 1;
@@ -437,25 +454,24 @@ bool FileSystem_WriteBitmap(const int16_t *image_scaled, uint32_t size, const ch
     buffer[64] = 0x00;
     buffer[65] = 0x00;
 
-    FIL fil;
-    FRESULT res = f_open(&fil, name, FA_CREATE_ALWAYS | FA_WRITE);
+    FRESULT res = f_open(&open_bitmap, name, FA_CREATE_ALWAYS | FA_WRITE);
     if (res != FR_OK) {
         return false;
     }
 
     UINT written;
     //write header
-    res = f_write(&fil, buffer, 66, &written);
+    res = f_write(&open_bitmap, buffer, 66, &written);
     if (res != FR_OK || written != 66) {
-        (void) f_close(&fil);
+        (void) f_close(&open_bitmap);
         return false;
     }
 
     // write data
-    bool ret = f_write_blockwise(&fil, size, image_scaled, &temp_to_color);
-    ret |= f_close(&fil) == FR_OK;
-    ret |= rebuild_curr_bmp_window();
+    DSP_ProcessAndDo(write_partial);
 
+    bool ret = f_close(&open_bitmap) == FR_OK;
+    ret &= rebuild_curr_bmp_window();
     return ret;
 }
 
@@ -466,7 +482,7 @@ bool FileSystem_WriteRaw(const int16_t *image_raw, uint32_t size, const char *na
     if (res != FR_OK) {
         return false;
     }
-    bool ret = f_write_blockwise(&fil, size, image_raw, &temp_identity_cast);
+    bool ret = f_write_blockwise(&fil, size, image_raw, temp_identity);
     ret |= f_close(&fil) == FR_OK;
     ret |= rebuild_curr_bmp_window();
 

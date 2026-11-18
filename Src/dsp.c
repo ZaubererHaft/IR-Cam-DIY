@@ -1,20 +1,13 @@
 #include "dsp.h"
-
-#include <string.h>
-
 #include "heatmap.h"
 #include "ILI9341_DMA_driver.h"
 #include "MLX90640.h"
+#include "ui_constants.h"
 
-#define offset_x  0
-#define offset_y  24
-
-#define SRC_WIDTH   32
-#define SRC_HEIGHT  24
+#include <string.h>
 
 #define MAX_UPSCALING_FACTOR 8
-#define MAX_DST_WIDTH        (SRC_WIDTH * MAX_UPSCALING_FACTOR)
-#define MAX_NEW_PIXEL_SIZE   8
+#define MAX_DST_WIDTH        (IR_SENSOR_WIDTH * MAX_UPSCALING_FACTOR)
 
 #define ALPHA_STILL       48
 #define ALPHA_MOTION      220
@@ -27,18 +20,18 @@
 
 static Config curr_config;
 
-static int16_t old_processed_data[SRC_WIDTH * SRC_HEIGHT];
-static int16_t curr_working_buffer[SRC_WIDTH * SRC_HEIGHT];
-static int16_t next_working_buffer[SRC_WIDTH * SRC_HEIGHT];
+static int16_t old_processed_data[IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT];
+static int16_t curr_working_buffer[IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT];
+static int16_t next_working_buffer[IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT];
 
-static uint16_t display_line_buffer[MAX_DST_WIDTH * MAX_NEW_PIXEL_SIZE];
+static uint16_t display_line_buffer[MAX_DST_WIDTH];
 
 void DSP_Init(void) {
     memset(old_processed_data, 20, sizeof(old_processed_data));
 }
 
 static void DSP_ApplyEMAFilter(int16_t *curr) {
-    for (int i = 0; i < (SRC_WIDTH * SRC_HEIGHT); i++) {
+    for (int i = 0; i < (IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT); i++) {
         int32_t new_val = curr[i];
         int32_t old_val = old_processed_data[i];
 
@@ -80,24 +73,24 @@ static int16_t median_of_5(int16_t *window) {
 
 static int16_t get_src_pixel(const int16_t *buffer, int32_t x, int32_t y) {
     if (x < 0) x = 0;
-    if (x >= SRC_WIDTH) x = SRC_WIDTH - 1;
+    if (x >= IR_SENSOR_WIDTH) x = IR_SENSOR_WIDTH - 1;
     if (y < 0) y = 0;
-    if (y >= SRC_HEIGHT) y = SRC_HEIGHT - 1;
-    return buffer[y * SRC_WIDTH + x];
+    if (y >= IR_SENSOR_HEIGHT) y = IR_SENSOR_HEIGHT - 1;
+    return buffer[y * IR_SENSOR_WIDTH + x];
 }
 
 static void DSP_ApplyMedianCross5(const int16_t *src, int16_t *dst) {
     int16_t window[5];
 
-    for (int32_t y = 0; y < SRC_HEIGHT; y++) {
-        for (int32_t x = 0; x < SRC_WIDTH; x++) {
+    for (int32_t y = 0; y < IR_SENSOR_HEIGHT; y++) {
+        for (int32_t x = 0; x < IR_SENSOR_WIDTH; x++) {
             window[0] = get_src_pixel(src, x, y); // middle
             window[1] = get_src_pixel(src, x, y - 1); // top
             window[2] = get_src_pixel(src, x, y + 1); // bottom
             window[3] = get_src_pixel(src, x - 1, y); // left
             window[4] = get_src_pixel(src, x + 1, y); // right
 
-            dst[y * SRC_WIDTH + x] = median_of_5(window);
+            dst[y * IR_SENSOR_WIDTH + x] = median_of_5(window);
         }
     }
 }
@@ -107,8 +100,8 @@ static int32_t abs32(int32_t v) {
 }
 
 static void DSP_ApplyEdgeAntiAliasing(const int16_t *src, int16_t *dst) {
-    for (int32_t y = 0; y < SRC_HEIGHT; y++) {
-        for (int32_t x = 0; x < SRC_WIDTH; x++) {
+    for (int32_t y = 0; y < IR_SENSOR_HEIGHT; y++) {
+        for (int32_t x = 0; x < IR_SENSOR_WIDTH; x++) {
             int32_t c = get_src_pixel(src, x, y); // Mitte
             int32_t n = get_src_pixel(src, x, y - 1); // Oben
             int32_t s = get_src_pixel(src, x, y + 1); // Unten
@@ -154,10 +147,10 @@ static void DSP_ApplyEdgeAntiAliasing(const int16_t *src, int16_t *dst) {
                 // Sanftes Blending (50% Original, 50% Kantenrichtung),
                 // (c + dir_avg + 1) >> 1
                 // // 75 % Original, 25 % Kantenrichtung
-                dst[y * SRC_WIDTH + x] = (int16_t) ((c * 3 + dir_avg + 2) >> 2);
+                dst[y * IR_SENSOR_WIDTH + x] = (int16_t) ((c * 3 + dir_avg + 2) >> 2);
             } else {
                 // Flache Bereiche und feine Spitzen bleiben 100% scharf
-                dst[y * SRC_WIDTH + x] = (int16_t) c;
+                dst[y * IR_SENSOR_WIDTH + x] = (int16_t) c;
             }
         }
     }
@@ -167,16 +160,16 @@ static void DSP_ApplyEdgeAntiAliasing(const int16_t *src, int16_t *dst) {
 
 static void DSP_ScaleUpAndDo(const int16_t *processed_data, ProcessedLineFunc func) {
     const int32_t upscaling_factor = (int32_t) curr_config.upscaling_factor;
-    const int32_t dst_width = SRC_WIDTH * upscaling_factor;
-    const int32_t dst_height = SRC_HEIGHT * upscaling_factor;
+    const int32_t dst_width = IR_SENSOR_WIDTH * upscaling_factor;
+    const int32_t dst_height = IR_SENSOR_HEIGHT * upscaling_factor;
     const int32_t new_pixel_size = 8 / upscaling_factor;
     const int32_t line_pixel_count = dst_width * new_pixel_size;
 
     ILI9341_Set_Address(
-        offset_x,
-        offset_y,
-        offset_x + (dst_width * new_pixel_size) - 1,
-        offset_y + (dst_height * new_pixel_size) - 1
+        IR_IMAGE_BEGIN_X,
+        IR_IMAGE_BEGIN_Y,
+        IR_IMAGE_BEGIN_X + (dst_width * new_pixel_size) - 1,
+        IR_IMAGE_BEGIN_Y + (dst_height * new_pixel_size) - 1
     );
 
     for (int32_t dst_y = 0; dst_y < dst_height; dst_y++) {
@@ -189,7 +182,7 @@ static void DSP_ScaleUpAndDo(const int16_t *processed_data, ProcessedLineFunc fu
             int32_t src_x = dst_x / upscaling_factor;
             int32_t x_frac = dst_x % upscaling_factor;
 
-            int32_t p00 = processed_data[(src_y * SRC_WIDTH) + src_x];
+            int32_t p00 = processed_data[(src_y * IR_SENSOR_WIDTH) + src_x];
             int32_t p10 = get_src_pixel(processed_data, src_x + 1, src_y);
             int32_t p01 = get_src_pixel(processed_data, src_x, src_y + 1);
             int32_t p11 = get_src_pixel(processed_data, src_x + 1, src_y + 1);
@@ -219,7 +212,7 @@ static void DSP_ScaleUpAndDo(const int16_t *processed_data, ProcessedLineFunc fu
         }
 
         for (int r = 0; r < new_pixel_size; r++) {
-            func(display_line_buffer, dst_width * new_pixel_size);
+            func(display_line_buffer, dst_width * new_pixel_size * 2);
         }
     }
 }

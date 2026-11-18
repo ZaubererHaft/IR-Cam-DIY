@@ -4,8 +4,8 @@
 #include "ILI9341_GFX.h"
 #include "file_system.h"
 #include "navigation.h"
+#include "ui_constants.h"
 
-#include <stdbool.h>
 #include <string.h>
 
 #define MARKER_Y_TOP 0
@@ -15,70 +15,85 @@
 #define MARKER_X_INDEX_DEL 1
 #define MARKER_X_INDEX_NEXT 2
 
-#define PREVIEW_PIXEL_SIZE 4
 
 static uint32_t marker_index_x = MARKER_X_INDEX_NEXT;
 static uint32_t marker_index_y = MARKER_Y_BOTTOM;
 
 static char *curr_file_name = NULL;
+static uint16_t line_buffer[256];
 
 static void Gallery_ClearImage() {
-    ILI9341_Draw_Rectangle(60, 70, 32 * PREVIEW_PIXEL_SIZE + 40, 24 * PREVIEW_PIXEL_SIZE + 45, BLACK);
+    ILI9341_Draw_Rectangle(IR_IMAGE_BEGIN_X, IR_IMAGE_BEGIN_X, 32 * 4 + 40, 24 * 4 + 45, BLACK);
 }
+
+static void Draw_Element(const char *text, uint32_t y_pos, uint32_t x_pos, uint32_t index_y, uint32_t index_x) {
+    uint16_t color_foreground;
+    uint16_t color_background;
+
+    if (marker_index_x == index_x && marker_index_y == index_y) {
+        color_foreground = BLACK;
+        color_background = WHITE;
+    } else {
+        color_foreground = WHITE;
+        color_background = BLACK;
+    }
+
+    ILI9341_Draw_Text(text, x_pos, y_pos, color_foreground, 2, color_background);
+}
+
+
+static void Gallery_RedrawNavigationBar() {
+    Draw_Element(" <", 220, 20, MARKER_Y_BOTTOM, MARKER_X_INDEX_PREV);
+    Draw_Element(" Del ", 220, 120, MARKER_Y_BOTTOM, MARKER_X_INDEX_DEL);
+    Draw_Element(" >", 220, 220, MARKER_Y_BOTTOM, MARKER_X_INDEX_NEXT);
+
+    Draw_Element("x", 30, 230, MARKER_Y_TOP, MARKER_X_INDEX_NEXT);
+}
+
 
 static void Gallery_DrawCurrentImage() {
     Gallery_ClearImage();
 
     if (FileSystem_AvailableFiles() > 0) {
         FIL fil;
-        BYTE byte_buffer;
-        UINT bytes_read;
 
-        FRESULT fr = f_open(&fil, curr_file_name, FA_READ);
+        if (f_open(&fil, curr_file_name, FA_READ) == FR_OK) {
+            if (f_lseek(&fil, 66) == FR_OK) {
+                ILI9341_Set_Address(
+                    IR_IMAGE_BEGIN_X,
+                    IR_IMAGE_BEGIN_Y,
+                    IR_IMAGE_BEGIN_X + 256 - 1,
+                    IR_IMAGE_BEGIN_Y + 192 - 1
+                );
 
-        if (fr == FR_OK) {
-            fr = f_lseek(&fil, 66);
+                int32_t bytes_left = 256 * 192 * 2;
+                while (bytes_left > 0) {
+                    UINT bytes_read = 0;
+                    UINT to_read = bytes_left < sizeof(line_buffer) ? bytes_left : sizeof(line_buffer);
 
-            uint16_t pixel = 0;
-            bool le = true;
-
-            uint16_t row = 0;
-            uint16_t col = 0;
-
-            do {
-                fr = f_read(&fil, &byte_buffer, 1, &bytes_read);
-                if (fr != FR_OK) {
-                    break;
-                }
-
-                if (le) {
-                    pixel |= byte_buffer;
-                    le = false;
-                } else {
-                    pixel |= byte_buffer << 8;
-                    le = true;
-
-                    ILI9341_Draw_Rectangle(60 + col * PREVIEW_PIXEL_SIZE, 70 + PREVIEW_PIXEL_SIZE * row,
-                                           PREVIEW_PIXEL_SIZE, PREVIEW_PIXEL_SIZE, pixel);
-
-                    pixel = 0;
-
-                    col++;
-                    if (col == 32) {
-                        row++;
-                        col = 0;
+                    if (f_read(&fil, line_buffer, to_read, &bytes_read) != FR_OK) {
+                        Error_Handler();
                     }
+                    if (bytes_read == 0) {
+                        break;
+                    }
+                    for (uint32_t i = 0; i < bytes_read / 2; i++) {
+                        line_buffer[i] = __REV16(line_buffer[i]);
+                    }
+                    ILI9341_Send_Data_Block((uint8_t *) line_buffer, bytes_read);
+                    bytes_left -= bytes_read;
                 }
-            } while (bytes_read > 0);
+                ILI9341_Draw_Text(curr_file_name, 120, 200, WHITE, 1, BLACK);
+            }
 
             f_close(&fil);
-
-            ILI9341_Draw_Text(curr_file_name, 100, 200, WHITE, 1, BLACK);
         }
     } else {
         ILI9341_Draw_Text("No images found", 100, 120, WHITE, 1, BLACK);
         ILI9341_Draw_Text("Why not make one?", 95, 130, WHITE, 1, BLACK);
     }
+
+    Gallery_RedrawNavigationBar();
 }
 
 
@@ -94,29 +109,6 @@ static void Gallery_DeleteCurrentImage() {
             Error_Handler();
         }
     }
-}
-
-static void Draw_Element(const char *text, uint32_t y_pos, uint32_t x_pos, uint32_t index_y, uint32_t index_x) {
-    uint16_t color_foreground = WHITE;
-    uint16_t color_background = BLACK;
-
-    if (marker_index_x == index_x && marker_index_y == index_y) {
-        color_foreground = BLACK;
-        color_background = WHITE;
-    } else {
-        color_foreground = WHITE;
-        color_background = BLACK;
-    }
-
-    ILI9341_Draw_Text(text, x_pos, y_pos, color_foreground, 2, color_background);
-}
-
-static void Gallery_RedrawNavigationBar() {
-    Draw_Element(" <", 220, 20, MARKER_Y_BOTTOM, MARKER_X_INDEX_PREV);
-    Draw_Element(" Del ", 220, 120, MARKER_Y_BOTTOM, MARKER_X_INDEX_DEL);
-    Draw_Element(" >", 220, 220, MARKER_Y_BOTTOM, MARKER_X_INDEX_NEXT);
-
-    Draw_Element(" x", 40, 220, MARKER_Y_TOP, MARKER_X_INDEX_NEXT);
 }
 
 void Gallery_DrawInitial() {

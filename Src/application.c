@@ -155,7 +155,7 @@ void Task_WriteImage(void) {
 
         int32_t written = snprintf(buff, sizeof(buff), "i%u.bmp", config.image_counter);
         if (written > 0) {
-            status = FileSystem_WriteBitmap(MLX90640_GetIRImageScaled(), 32 * 24, buff);
+            status = FileSystem_WriteImageAsBitmap(buff);
         }
 
         written = snprintf(buff, sizeof(buff), "i%u.bin", config.image_counter);
