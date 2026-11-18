@@ -27,7 +27,7 @@ static int16_t next_working_buffer[IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT];
 static uint16_t display_line_buffer[MAX_DST_WIDTH];
 
 void DSP_Init(void) {
-    memset(old_processed_data, 20, sizeof(old_processed_data));
+    memset(old_processed_data, 200, sizeof(old_processed_data));
 }
 
 static void DSP_ApplyEMAFilter(int16_t *curr) {
