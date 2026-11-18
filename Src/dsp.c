@@ -109,43 +109,43 @@ static int32_t abs32(int32_t v) {
 static void DSP_ApplyEdgeAntiAliasing(const int16_t *src, int16_t *dst) {
     for (int32_t y = 0; y < SRC_HEIGHT; y++) {
         for (int32_t x = 0; x < SRC_WIDTH; x++) {
-            int32_t c  = get_src_pixel(src, x,     y);     // Mitte
-            int32_t n  = get_src_pixel(src, x,     y - 1); // Oben
-            int32_t s  = get_src_pixel(src, x,     y + 1); // Unten
-            int32_t w  = get_src_pixel(src, x - 1, y);     // Links
-            int32_t e  = get_src_pixel(src, x + 1, y);     // Rechts
+            int32_t c = get_src_pixel(src, x, y); // Mitte
+            int32_t n = get_src_pixel(src, x, y - 1); // Oben
+            int32_t s = get_src_pixel(src, x, y + 1); // Unten
+            int32_t w = get_src_pixel(src, x - 1, y); // Links
+            int32_t e = get_src_pixel(src, x + 1, y); // Rechts
             int32_t nw = get_src_pixel(src, x - 1, y - 1); // Oben-Links
             int32_t ne = get_src_pixel(src, x + 1, y - 1); // Oben-Rechts
             int32_t sw = get_src_pixel(src, x - 1, y + 1); // Unten-Links
             int32_t se = get_src_pixel(src, x + 1, y + 1); // Unten-Rechts
 
             // Kontrast (Gradient) entlang der 4 Hauptachsen berechnen
-            int32_t grad_h  = abs32(w - e);    // Horizontal
-            int32_t grad_v  = abs32(n - s);    // Vertikal
-            int32_t grad_d1 = abs32(nw - se);  // Diagonale "\"
-            int32_t grad_d2 = abs32(ne - sw);  // Diagonale "/"
+            int32_t grad_h = abs32(w - e); // Horizontal
+            int32_t grad_v = abs32(n - s); // Vertikal
+            int32_t grad_d1 = abs32(nw - se); // Diagonale "\"
+            int32_t grad_d2 = abs32(ne - sw); // Diagonale "/"
 
             // Richtung mit dem GERINGSTEN Unterschied finden (= Verlauf der Kante)
             int32_t min_grad = grad_h;
-            int32_t dir_avg  = (w + e) >> 1;
+            int32_t dir_avg = (w + e) >> 1;
 
             if (grad_v < min_grad) {
                 min_grad = grad_v;
-                dir_avg  = (n + s) >> 1;
+                dir_avg = (n + s) >> 1;
             }
             if (grad_d1 < min_grad) {
                 min_grad = grad_d1;
-                dir_avg  = (nw + se) >> 1;
+                dir_avg = (nw + se) >> 1;
             }
             if (grad_d2 < min_grad) {
                 min_grad = grad_d2;
-                dir_avg  = (ne + sw) >> 1;
+                dir_avg = (ne + sw) >> 1;
             }
 
             // Nur glätten, wenn tatsächlich eine Kante vorliegt (Kontrast > Schwellwert),
             // aber entlang der Kante selbst ein homogenes Signal herrscht.
             int32_t max_grad = grad_h;
-            if (grad_v  > max_grad) max_grad = grad_v;
+            if (grad_v > max_grad) max_grad = grad_v;
             if (grad_d1 > max_grad) max_grad = grad_d1;
             if (grad_d2 > max_grad) max_grad = grad_d2;
 
@@ -154,16 +154,18 @@ static void DSP_ApplyEdgeAntiAliasing(const int16_t *src, int16_t *dst) {
                 // Sanftes Blending (50% Original, 50% Kantenrichtung),
                 // (c + dir_avg + 1) >> 1
                 // // 75 % Original, 25 % Kantenrichtung
-                dst[y * SRC_WIDTH + x] = (int16_t)((c * 3 + dir_avg + 2) >> 2);
+                dst[y * SRC_WIDTH + x] = (int16_t) ((c * 3 + dir_avg + 2) >> 2);
             } else {
                 // Flache Bereiche und feine Spitzen bleiben 100% scharf
-                dst[y * SRC_WIDTH + x] = (int16_t)c;
+                dst[y * SRC_WIDTH + x] = (int16_t) c;
             }
         }
     }
 }
 
-static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
+
+
+static void DSP_ScaleUpAndDo(const int16_t *processed_data, ProcessedLineFunc func) {
     const int32_t upscaling_factor = (int32_t) curr_config.upscaling_factor;
     const int32_t dst_width = SRC_WIDTH * upscaling_factor;
     const int32_t dst_height = SRC_HEIGHT * upscaling_factor;
@@ -188,8 +190,6 @@ static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
             int32_t x_frac = dst_x % upscaling_factor;
 
             int32_t p00 = processed_data[(src_y * SRC_WIDTH) + src_x];
-            old_processed_data[(src_y * SRC_WIDTH) ] = p00;
-
             int32_t p10 = get_src_pixel(processed_data, src_x + 1, src_y);
             int32_t p01 = get_src_pixel(processed_data, src_x, src_y + 1);
             int32_t p11 = get_src_pixel(processed_data, src_x + 1, src_y + 1);
@@ -210,7 +210,7 @@ static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
                 weighted_sum -= half_div;
             }
 
-            int16_t dst_p = (int16_t)(weighted_sum / total_divisor);
+            int16_t dst_p = (int16_t) (weighted_sum / total_divisor);
             uint16_t color_swapped = __REV16(Heatmap_TempScaledToRGB565(dst_p).raw);
 
             for (int p = 0; p < new_pixel_size; p++) {
@@ -219,23 +219,28 @@ static void DSP_ScaleUpAndDisplay(const int16_t *processed_data) {
         }
 
         for (int r = 0; r < new_pixel_size; r++) {
-            ILI9341_Send_Data_Block((uint8_t *) display_line_buffer, dst_width * new_pixel_size);
+            func(display_line_buffer, dst_width * new_pixel_size);
         }
     }
 }
 
+static void send_to_dma(uint16_t *buff, uint32_t size) {
+    ILI9341_Send_Data_Block((uint8_t *) buff, size);
+}
 
-void DSP_ProcessAndDisplay() {
+void DSP_ProcessAndDo(ProcessedLineFunc func_after_process) {
     const int16_t *image = MLX90640_GetIRImageScaled();
 
     DSP_ApplyMedianCross5(image, next_working_buffer);
     DSP_ApplyEMAFilter(next_working_buffer);
     DSP_ApplyEdgeAntiAliasing(next_working_buffer, curr_working_buffer);
+    DSP_ScaleUpAndDo(curr_working_buffer, func_after_process);
+}
 
-    const int16_t *processed_data = curr_working_buffer;
-    DSP_ScaleUpAndDisplay(processed_data);
 
-    memcpy(old_processed_data, processed_data, sizeof(curr_working_buffer));
+void DSP_ProcessAndDisplay() {
+    DSP_ProcessAndDo(send_to_dma);
+    memcpy(old_processed_data, curr_working_buffer, sizeof(curr_working_buffer));
 }
 
 
