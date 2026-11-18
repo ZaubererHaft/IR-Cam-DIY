@@ -522,7 +522,7 @@ bool FileSystem_WriteRaw(const int16_t *image_raw, uint32_t size, const char *na
     if (res != FR_OK) {
         return false;
     }
-    bool ret = f_write_blockwise(&fil, size, image_raw, temp_identity);
+    bool ret = f_write_blockwise(&fil, size * 2, image_raw, temp_identity);
     ret |= f_close(&fil) == FR_OK;
     ret |= rebuild_curr_bmp_window();
 
