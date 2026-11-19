@@ -22,9 +22,18 @@ static int32_t diff_max;
 // Schwellwert: z.B. 10 = 1,0°C Unterschied quer zur Kante
 static int32_t edge_threshold;
 
+// Schärfestärke (Q4-Festkomma): 8 = 0.5x, 12 = 0.75x, 16 = 1.0x
+static int32_t unsharp_strength;
+// Untere Grenze (Coring): Ignoriert Sensorrauschen bis +/- 15 Digits
+static int32_t unsharp_threshold;
+ // Obere Grenze (Clamping): Maximale Kantenanhebung in Digits
+static int32_t unsharp_max_boost;
+
+
 static Config curr_config;
 
 static int16_t old_processed_data[IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT];
+static int16_t ema_processed_data[IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT];
 static int16_t curr_working_buffer[IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT];
 static int16_t next_working_buffer[IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT];
 
@@ -40,12 +49,16 @@ void DSP_Init(void) {
     diff_min = Temperature_FromFloat(0.5f);
     diff_max = Temperature_FromFloat(1.5f);
     edge_threshold = Temperature_FromFloat(1.0f);
+
+    unsharp_strength = 8; // 16 = 1
+    unsharp_threshold = Temperature_FromFloat(0.1f);
+    unsharp_max_boost = Temperature_FromFloat(0.75f);
 }
 
-static void DSP_ApplyEMAFilter(int16_t *curr) {
+static void DSP_ApplyEMAFilter(int16_t *old_data, int16_t *curr) {
     for (int i = 0; i < IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT; i++) {
         int32_t new_val = curr[i];
-        int32_t old_val = old_processed_data[i];
+        int32_t old_val = old_data[i];
 
         int32_t diff = new_val - old_val;
         if (diff < 0) {
@@ -172,13 +185,53 @@ static void DSP_ApplyEdgeAntiAliasing(const int16_t *src, int16_t *dst) {
 }
 
 
+
+static void DSP_ApplyUnsharpMaskCross5(const int16_t *src, int16_t *dst) {
+    for (int32_t y = 0; y < IR_SENSOR_HEIGHT; y++) {
+        for (int32_t x = 0; x < IR_SENSOR_WIDTH; x++) {
+            int32_t middle = get_src_pixel(src, x, y);
+            int32_t top    = get_src_pixel(src, x, y - 1);
+            int32_t bottom = get_src_pixel(src, x, y + 1);
+            int32_t left   = get_src_pixel(src, x - 1, y);
+            int32_t right  = get_src_pixel(src, x + 1, y);
+
+            // 1. Weichgezeichneten Referenzwert berechnen (gewichtetes 5er-Kreuz)
+            int32_t blur = ((middle << 2) + top + bottom + left + right + 4) >> 3;
+
+            // 2. Kantenanteil (Hochpass) isolieren
+            int32_t detail = middle - blur;
+            int32_t boost = 0;
+
+            // 3. Begrenzung nach unten (Rauschunterdrückung mit weichem Übergang)
+            if (detail > unsharp_threshold) {
+                boost = ((detail - unsharp_threshold) * unsharp_strength) >> 4;
+            } else if (detail < -unsharp_threshold) {
+                boost = ((detail + unsharp_threshold) * unsharp_strength) >> 4;
+            }
+
+            // 4. Begrenzung nach oben (verhindert Überschwingen / Halos an harten Kanten)
+            if (boost > unsharp_max_boost) {
+                boost = unsharp_max_boost;
+            } else if (boost < -unsharp_max_boost) {
+                boost = -unsharp_max_boost;
+            }
+
+            // 5. Auf Originalwert addieren und auf int16_t begrenzen
+            int32_t result = middle + boost;
+            if (result > 32767) result = 32767;
+            if (result < -32768) result = -32768;
+
+            dst[y * IR_SENSOR_WIDTH + x] = (int16_t) result;
+        }
+    }
+}
+
 static void DSP_ScaleUpAndDo(const int16_t *processed_data, ProcessedLineFunc func) {
     const int32_t upscaling_factor = (int32_t) curr_config.upscaling_factor;
     const int32_t dst_width = IR_SENSOR_WIDTH * upscaling_factor;
     const int32_t dst_height = IR_SENSOR_HEIGHT * upscaling_factor;
     const int32_t new_pixel_size = 8 / upscaling_factor;
     const int32_t line_pixel_count = dst_width * new_pixel_size;
-    uint8_t active_buf = 0;
 
     ILI9341_Set_Address(
         IR_IMAGE_BEGIN_X,
@@ -240,15 +293,19 @@ void DSP_ProcessAndDo(ProcessedLineFunc func_after_process) {
     const int16_t *image = MLX90640_GetIRImageScaled();
 
     DSP_ApplyMedianCross5(image, next_working_buffer);
-    DSP_ApplyEMAFilter(next_working_buffer);
+    DSP_ApplyEMAFilter(old_processed_data, next_working_buffer);
+
+    memcpy(ema_processed_data, next_working_buffer, sizeof(ema_processed_data));
+
     DSP_ApplyEdgeAntiAliasing(next_working_buffer, curr_working_buffer);
-    DSP_ScaleUpAndDo(curr_working_buffer, func_after_process);
+    DSP_ApplyUnsharpMaskCross5(curr_working_buffer, next_working_buffer);
+    DSP_ScaleUpAndDo(next_working_buffer, func_after_process);
 }
 
 
 void DSP_ProcessAndDisplay() {
     DSP_ProcessAndDo(send_to_dma);
-    memcpy(old_processed_data, next_working_buffer, sizeof(next_working_buffer));
+    memcpy(old_processed_data, ema_processed_data, sizeof(ema_processed_data));
 }
 
 
