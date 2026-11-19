@@ -8,15 +8,19 @@
 
 #define MAX_UPSCALING_FACTOR 8
 #define MAX_DST_WIDTH        (IR_SENSOR_WIDTH * MAX_UPSCALING_FACTOR)
+#define ALPHA_SCALING 256
 
-#define ALPHA_STILL       48
-#define ALPHA_MOTION      220
-#define MOTION_THRESHOLD  10
+// z.B. ~0.20 -> starke Glättung bei ruhigem Bild
+static int32_t alpha_still;
+// z.B: ~0.85 -> fast sofortige Reaktion bei Bewegung
+static int32_t alpha_motion;
 
-#define DIFF_MIN      5    // Bis 0,5°C Unterschied: reines Rauschen -> volle Glättung
-#define DIFF_MAX      15   // Ab 1,5°C Unterschied: echte Bewegung -> kaum Glättung
-
-#define EDGE_THRESHOLD 10
+// z.B. Bis 0,5°C Unterschied: reines Rauschen -> volle Glättung
+static int32_t diff_min;
+// z.B. Ab 1,5°C Unterschied: echte Bewegung -> kaum Glättung
+static int32_t diff_max;
+// Schwellwert: z.B. 10 = 1,0°C Unterschied quer zur Kante
+static int32_t edge_threshold;
 
 static Config curr_config;
 
@@ -28,6 +32,12 @@ static uint16_t display_line_buffer[MAX_DST_WIDTH];
 
 void DSP_Init(void) {
     memset(old_processed_data, 200, sizeof(old_processed_data));
+
+    alpha_still = (int32_t) (0.2f * (float) ALPHA_SCALING);
+    alpha_motion = (int32_t) (0.85f * (float) ALPHA_SCALING);
+    diff_min = Temperature_FromFloat(0.5f);
+    diff_max = Temperature_FromFloat(1.5f);
+    edge_threshold = Temperature_FromFloat(1.0f);
 }
 
 static void DSP_ApplyEMAFilter(int16_t *curr) {
@@ -40,17 +50,20 @@ static void DSP_ApplyEMAFilter(int16_t *curr) {
             diff = -diff;
         }
 
-        // select alpha value
+        // select alpha value dynamically
         int32_t alpha;
-        if (diff <= DIFF_MIN) {
-            alpha = ALPHA_STILL;
-        } else if (diff >= DIFF_MAX) {
-            alpha = ALPHA_MOTION;
+        if (diff <= diff_min) {
+            // no motion -> still value
+            alpha = alpha_still;
+        } else if (diff >= diff_max) {
+            // motion -> max alpha
+            alpha = alpha_motion;
         } else {
-            alpha = ALPHA_STILL + ((diff - DIFF_MIN) * (ALPHA_MOTION - ALPHA_STILL)) / (DIFF_MAX - DIFF_MIN);
+            // interpolate in between
+            alpha = alpha_still + ((diff - diff_min) * (alpha_motion - alpha_still)) / (diff_max - diff_min);
         }
 
-        int32_t one_minus_alpha = 256 - alpha;
+        int32_t one_minus_alpha = ALPHA_SCALING - alpha;
         int16_t filtered = (int16_t) (((new_val * alpha) + (old_val * one_minus_alpha)) >> 8);
 
         curr[i] = filtered;
@@ -78,6 +91,7 @@ static int16_t get_src_pixel(const int16_t *buffer, int32_t x, int32_t y) {
     if (y >= IR_SENSOR_HEIGHT) y = IR_SENSOR_HEIGHT - 1;
     return buffer[y * IR_SENSOR_WIDTH + x];
 }
+
 
 static void DSP_ApplyMedianCross5(const int16_t *src, int16_t *dst) {
     int16_t window[5];
@@ -142,12 +156,11 @@ static void DSP_ApplyEdgeAntiAliasing(const int16_t *src, int16_t *dst) {
             if (grad_d1 > max_grad) max_grad = grad_d1;
             if (grad_d2 > max_grad) max_grad = grad_d2;
 
-            // Schwellwert: z.B. 15 = 1,5°C Unterschied quer zur Kante
-            if (max_grad > EDGE_THRESHOLD && min_grad < (max_grad >> 1)) {
+            if (max_grad > edge_threshold && min_grad < (max_grad >> 1)) {
                 // Sanftes Blending (50% Original, 50% Kantenrichtung),
-                // (c + dir_avg + 1) >> 1
+                dst[y * IR_SENSOR_WIDTH + x] = (int16_t) ((c + dir_avg + 1) >> 1);
                 // // 75 % Original, 25 % Kantenrichtung
-                dst[y * IR_SENSOR_WIDTH + x] = (int16_t) ((c * 3 + dir_avg + 2) >> 2);
+                //dst[y * IR_SENSOR_WIDTH + x] = (int16_t) ((c * 3 + dir_avg + 2) >> 2);
             } else {
                 // Flache Bereiche und feine Spitzen bleiben 100% scharf
                 dst[y * IR_SENSOR_WIDTH + x] = (int16_t) c;
@@ -155,7 +168,6 @@ static void DSP_ApplyEdgeAntiAliasing(const int16_t *src, int16_t *dst) {
         }
     }
 }
-
 
 
 static void DSP_ScaleUpAndDo(const int16_t *processed_data, ProcessedLineFunc func) {

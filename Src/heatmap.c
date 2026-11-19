@@ -1,15 +1,9 @@
 #include "heatmap.h"
 
-// Defines
-#define LUT_SIZE ((TEMPERATURE_MAX_VALUE - TEMPERATURE_MIN_VALUE) * TEMPERATURE_SCALING)
+#define TEMPERATURE_SCALING (100)
 
-#define GET_INDEX(scaled_temp) (scaled_temp - TEMPERATURE_MIN_VALUE * TEMPERATURE_SCALING)
-
-// Typedefs
 typedef RGB565_t (*HeatmapFunction)(int16_t);
 
-
-// Static Variables
 static const char *heatmap_names[] = {"Magma", "HotWhite", "Gray", "Gray (i)", "Red", "Green", "Rainbow"};
 
 static const uint16_t heatmap_lut[7][256] = {
@@ -296,8 +290,9 @@ RGB565_t Heatmap_TempScaledToRGB565(int16_t scaled_temp) {
     return ret;
 }
 
+
 RGB565_t Heatmap_TempToRGB565(float temp_celsius) {
-    return Heatmap_TempScaledToRGB565((int16_t) temp_celsius * TEMPERATURE_SCALING);
+    return Heatmap_TempScaledToRGB565(Temperature_FromFloat(temp_celsius));
 }
 
 

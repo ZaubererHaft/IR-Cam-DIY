@@ -5,9 +5,8 @@
 
 #include "config.h"
 
-#define TEMPERATURE_SCALING (10)
-#define TEMPERATURE_MIN_VALUE (-20)
-#define TEMPERATURE_MAX_VALUE (120)
+#define TEMPERATURE_GLOBAL_MIN_VALUE (-40)
+#define TEMPERATURE_GLOBAL_MAX_VALUE (285)
 
 typedef union {
     uint16_t raw;
@@ -33,6 +32,7 @@ void Heatmap_ConfigObserver(Config config);
 int16_t Temperature_FromFloat(float temp_cel);
 
 float Temperature_ToFloat(int16_t temp_cel);
+
 
 
 #endif //CAM_HEATMAP_H

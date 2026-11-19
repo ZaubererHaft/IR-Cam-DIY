@@ -103,7 +103,7 @@ void Settings_StickMovedRight(void) {
             Settings_Redraw();
         }
     } else if (menu_cursor_Y == MENU_MAX) {
-        if (requested_config.tMax + 1.0f <= TEMPERATURE_MAX_VALUE) {
+        if (requested_config.tMax + 1.0f <= TEMPERATURE_GLOBAL_MAX_VALUE) {
             requested_config.tMax++;
             Settings_Redraw();
         }
@@ -125,7 +125,7 @@ void Settings_StickMovedLeft(void) {
                                              : requested_config.heatmap_index - 1;
         Settings_Redraw();
     } else if (menu_cursor_Y == MENU_MIN) {
-        if (requested_config.tMin - 1.0f >= TEMPERATURE_MIN_VALUE) {
+        if (requested_config.tMin - 1.0f >= TEMPERATURE_GLOBAL_MIN_VALUE) {
             requested_config.tMin--;
             Settings_Redraw();
         }
