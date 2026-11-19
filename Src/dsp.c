@@ -31,9 +31,11 @@ static int16_t next_working_buffer[IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT];
 static uint16_t display_line_buffer[MAX_DST_WIDTH];
 
 void DSP_Init(void) {
-    memset(old_processed_data, 200, sizeof(old_processed_data));
+    for (int i = 0; i < IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT; i++) {
+        old_processed_data[i] = Temperature_FromFloat(20.0f);
+    }
 
-    alpha_still = (int32_t) (0.2f * (float) ALPHA_SCALING);
+    alpha_still = (int32_t) (0.1875f * (float) ALPHA_SCALING);
     alpha_motion = (int32_t) (0.85f * (float) ALPHA_SCALING);
     diff_min = Temperature_FromFloat(0.5f);
     diff_max = Temperature_FromFloat(1.5f);
@@ -41,7 +43,7 @@ void DSP_Init(void) {
 }
 
 static void DSP_ApplyEMAFilter(int16_t *curr) {
-    for (int i = 0; i < (IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT); i++) {
+    for (int i = 0; i < IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT; i++) {
         int32_t new_val = curr[i];
         int32_t old_val = old_processed_data[i];
 
@@ -158,9 +160,9 @@ static void DSP_ApplyEdgeAntiAliasing(const int16_t *src, int16_t *dst) {
 
             if (max_grad > edge_threshold && min_grad < (max_grad >> 1)) {
                 // Sanftes Blending (50% Original, 50% Kantenrichtung),
-                dst[y * IR_SENSOR_WIDTH + x] = (int16_t) ((c + dir_avg + 1) >> 1);
+                //dst[y * IR_SENSOR_WIDTH + x] = (int16_t) ((c + dir_avg + 1) >> 1);
                 // // 75 % Original, 25 % Kantenrichtung
-                //dst[y * IR_SENSOR_WIDTH + x] = (int16_t) ((c * 3 + dir_avg + 2) >> 2);
+                dst[y * IR_SENSOR_WIDTH + x] = (int16_t) ((c * 3 + dir_avg + 2) >> 2);
             } else {
                 // Flache Bereiche und feine Spitzen bleiben 100% scharf
                 dst[y * IR_SENSOR_WIDTH + x] = (int16_t) c;
@@ -176,6 +178,7 @@ static void DSP_ScaleUpAndDo(const int16_t *processed_data, ProcessedLineFunc fu
     const int32_t dst_height = IR_SENSOR_HEIGHT * upscaling_factor;
     const int32_t new_pixel_size = 8 / upscaling_factor;
     const int32_t line_pixel_count = dst_width * new_pixel_size;
+    uint8_t active_buf = 0;
 
     ILI9341_Set_Address(
         IR_IMAGE_BEGIN_X,
@@ -245,7 +248,7 @@ void DSP_ProcessAndDo(ProcessedLineFunc func_after_process) {
 
 void DSP_ProcessAndDisplay() {
     DSP_ProcessAndDo(send_to_dma);
-    memcpy(old_processed_data, curr_working_buffer, sizeof(curr_working_buffer));
+    memcpy(old_processed_data, next_working_buffer, sizeof(next_working_buffer));
 }
 
 
