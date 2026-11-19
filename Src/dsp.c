@@ -1,4 +1,8 @@
 #include "dsp.h"
+
+#include <math.h>
+#include <stdlib.h>
+
 #include "heatmap.h"
 #include "ILI9341_DMA_driver.h"
 #include "MLX90640.h"
@@ -26,7 +30,7 @@ static int32_t edge_threshold;
 static int32_t unsharp_strength;
 // Untere Grenze (Coring): Ignoriert Sensorrauschen bis +/- 15 Digits
 static int32_t unsharp_threshold;
- // Obere Grenze (Clamping): Maximale Kantenanhebung in Digits
+// Obere Grenze (Clamping): Maximale Kantenanhebung in Digits
 static int32_t unsharp_max_boost;
 
 
@@ -185,15 +189,14 @@ static void DSP_ApplyEdgeAntiAliasing(const int16_t *src, int16_t *dst) {
 }
 
 
-
 static void DSP_ApplyUnsharpMaskCross5(const int16_t *src, int16_t *dst) {
     for (int32_t y = 0; y < IR_SENSOR_HEIGHT; y++) {
         for (int32_t x = 0; x < IR_SENSOR_WIDTH; x++) {
             int32_t middle = get_src_pixel(src, x, y);
-            int32_t top    = get_src_pixel(src, x, y - 1);
+            int32_t top = get_src_pixel(src, x, y - 1);
             int32_t bottom = get_src_pixel(src, x, y + 1);
-            int32_t left   = get_src_pixel(src, x - 1, y);
-            int32_t right  = get_src_pixel(src, x + 1, y);
+            int32_t left = get_src_pixel(src, x - 1, y);
+            int32_t right = get_src_pixel(src, x + 1, y);
 
             // 1. Weichgezeichneten Referenzwert berechnen (gewichtetes 5er-Kreuz)
             int32_t blur = ((middle << 2) + top + bottom + left + right + 4) >> 3;
@@ -285,6 +288,22 @@ static void DSP_ScaleUpAndDo(const int16_t *processed_data, ProcessedLineFunc fu
     }
 }
 
+static void DSP_MaxAndMin(const int16_t *buff, int16_t *min, int16_t *max) {
+    *min = Temperature_FromFloat(TEMPERATURE_GLOBAL_MAX_VALUE);
+    *max = Temperature_FromFloat(TEMPERATURE_GLOBAL_MIN_VALUE);
+
+    for (int32_t y = 0; y < IR_SENSOR_WIDTH * IR_SENSOR_HEIGHT; y++) {
+        int16_t temp = buff[y];
+
+        if (temp > *max) {
+            *max = temp;
+        }
+        if (temp < *min) {
+            *min = temp;
+        }
+    }
+}
+
 static void send_to_dma(uint16_t *buff, uint32_t size) {
     ILI9341_Send_Data_Block((uint8_t *) buff, size);
 }
@@ -306,6 +325,21 @@ void DSP_ProcessAndDo(ProcessedLineFunc func_after_process) {
 void DSP_ProcessAndDisplay() {
     DSP_ProcessAndDo(send_to_dma);
     memcpy(old_processed_data, ema_processed_data, sizeof(ema_processed_data));
+}
+
+void DSP_UpdateMinMaxIfAutoscale(void) {
+    if (curr_config.autoscale) {
+        int16_t min, max;
+        DSP_MaxAndMin(next_working_buffer, &min, &max);
+        if (abs(min - Temperature_FromFloat(curr_config.tMin)) > Temperature_FromFloat(1.0) ||
+            abs(max - Temperature_FromFloat(curr_config.tMax)) > Temperature_FromFloat(1.0)
+        ) {
+            curr_config.tMin = roundf(Temperature_ToFloat(min));
+            curr_config.tMax = roundf(Temperature_ToFloat(max));
+
+            Config_InformObservers(curr_config);
+        }
+    }
 }
 
 

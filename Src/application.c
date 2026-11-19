@@ -214,6 +214,7 @@ void Task_InformObservers(void) {
 void Task_ProcessAndDisplayIRData(void) {
     if (!UserInterface_ShowingAnyMenuOrDialog()) {
         DSP_ProcessAndDisplay();
+        DSP_UpdateMinMaxIfAutoscale();
     }
 }
 

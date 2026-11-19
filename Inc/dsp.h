@@ -9,6 +9,8 @@ void DSP_Init(void);
 
 void DSP_ProcessAndDisplay(void);
 
+void DSP_UpdateMinMaxIfAutoscale(void);
+
 void DSP_ProcessAndDo(ProcessedLineFunc func_after_process);
 
 void DSP_ConfigObserver(Config config);
