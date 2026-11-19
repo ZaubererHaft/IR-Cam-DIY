@@ -217,20 +217,21 @@ static bool rebuild_curr_bmp_window(void) {
         available_bmps++;
 
         if (available_bmps == 1) {
-            snprintf(first_found, sizeof(first_found), "%s", fno.fname);
+            strcpy(first_found, fno.fname);
         }
 
-        snprintf(last_found, sizeof(last_found), "%s", fno.fname);
+        strcpy(last_found, fno.fname);
 
         // Search prev and next
         if (!curr_found) {
             if (strcmp(curr_bitmap, fno.fname) == 0) {
                 curr_found = true;
             } else {
-                snprintf(prev_bmp, sizeof(prev_bmp), "%s", fno.fname);
+                strcpy(prev_bmp, fno.fname);
             }
         } else if (!next_found) {
-            snprintf(next_bmp, sizeof(next_bmp), "%s", fno.fname);
+            strcpy(next_bmp, fno.fname);
+
             next_found = true;
         }
     }
@@ -250,7 +251,8 @@ static bool rebuild_curr_bmp_window(void) {
     // Fall B: curr_bitmap not found
     if (!curr_found) {
         // Fallback to very first files
-        snprintf(curr_bitmap, sizeof(curr_bitmap), "%s", first_found);
+        strcpy(curr_bitmap, first_found);
+
         prev_bmp[0] = '\0';
 
         if (available_bmps > 1) {
@@ -260,12 +262,12 @@ static bool rebuild_curr_bmp_window(void) {
 
     // Wrap-Around  PREVIOUS
     if (prev_bmp[0] == '\0') {
-        snprintf(prev_bmp, sizeof(prev_bmp), "%s", last_found);
+        strcpy(prev_bmp, last_found);
     }
 
     // Wrap-Around  NEXT
     if (next_bmp[0] == '\0') {
-        snprintf(next_bmp, sizeof(next_bmp), "%s", first_found);
+        strcpy(next_bmp, first_found);
     }
 
     return true;
